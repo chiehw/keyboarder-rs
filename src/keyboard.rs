@@ -13,8 +13,8 @@ use std::{
 };
 use x11::{
     xlib::{
-        self, Display, XCloseDisplay, XDefaultRootWindow, XDisplayKeycodes, XOpenDisplay,
-        XQueryPointer, XkbGetMap, XkbKeycodeToKeysym,
+        Display, XCloseDisplay, XDefaultRootWindow, XDisplayKeycodes, XOpenDisplay, XQueryPointer,
+        XkbGetMap, XkbKeycodeToKeysym,
     },
     xtest,
 };
@@ -218,7 +218,7 @@ pub struct ModifierState {
 }
 
 impl ModifierState {
-    pub fn new(state: u32){
+    pub fn new(_state: u32) {
         // Self{
         //     shift
         // }

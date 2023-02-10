@@ -1,5 +1,4 @@
-use crate::event::{CodeState, State};
-use rdev::Key;
+use crate::event::CodeState;
 
 pub enum Action {
     Sync(CodeState),

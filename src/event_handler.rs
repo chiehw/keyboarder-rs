@@ -1,6 +1,6 @@
 use crate::action::Action;
 use crate::common::*;
-use crate::event::{CodeState, Event, Event::*, KeyboardEvent};
+use crate::event::{Event, Event::*, KeyboardEvent};
 use crate::keyboard::Keyboard;
 use rdev::Key;
 
