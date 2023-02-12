@@ -215,12 +215,14 @@ impl ModifierState {
         }
     }
 
-    /// Get the codes that should be clicked,
+    /// todo!: return extra_modifiers, missing_modifiers
+    /// 
+    ///  Get the codes that should be clicked,
     /// modifiers of both side can be sync after clicking the keys.
     ///
     /// The modifers in the vec represent the active state of the remote modifier,
     /// compare it with the local modifiers.
-    pub fn compare_modifers(&self, modifiers: &[Key]) -> Vec<CodeState> {
+    pub fn diff_modifiers(&self, modifiers: &[Key]) -> Vec<CodeState> {
         let mut codes: Vec<CodeState> = vec![];
 
         let shift = modifiers.contains(&Key::ShiftLeft) || modifiers.contains(&Key::ShiftRight);

@@ -37,13 +37,13 @@ impl EventHandler {
     }
 
     fn on_keyboard_event(&mut self, keyboard_event: &KeyboardEvent) {
-        self.check_modifiers(&keyboard_event.modifiers);
+        self.update_modifiers(&keyboard_event.modifiers);
         self.send_action(Action::Simulate(keyboard_event.code_state.clone()));
     }
 
-    pub fn check_modifiers(&mut self, modifiers: &[Key]) {
+    pub fn update_modifiers(&mut self, modifiers: &[Key]) {
         let modifier_state = self.keyboard.get_modifier_state();
-        let codes = modifier_state.compare_modifers(modifiers);
+        let codes = modifier_state.diff_modifiers(modifiers);
         for code_state in codes {
             self.send_action(Action::Simulate(code_state.clone()));
         }
