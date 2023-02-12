@@ -1,4 +1,4 @@
-use crate::keyboard::Key;
+use crate::x11::Key;
 
 /// todo?: Is repeat necessary?
 

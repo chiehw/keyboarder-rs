@@ -1,19 +1,19 @@
 use crate::action::Action;
-use crate::common::*;
 use crate::event::{Event, Event::*, KeyboardEvent};
-use crate::keyboard::{Key, Keyboard};
+use crate::x11::Key;
+use crate::x11::*;
 
 pub struct EventHandler {
-    keyboard: Keyboard,
+    // keyboard: Keyboard,
     pressed_key: Vec<Key>,
     actions: Vec<Action>,
 }
 
 impl EventHandler {
     pub fn new() -> Result<Self> {
-        let keyboard = Keyboard::new()?;
+        // let keyboard = Keyboard::new()?;
         Ok(Self {
-            keyboard,
+            // keyboard,
             pressed_key: vec![],
             actions: vec![],
         })
@@ -21,7 +21,9 @@ impl EventHandler {
 }
 
 impl Drop for EventHandler {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        self.update_modifiers(&[]);
+    }
 }
 
 impl EventHandler {
@@ -42,7 +44,8 @@ impl EventHandler {
     }
 
     pub fn update_modifiers(&mut self, modifiers: &[Key]) {
-        let modifier_state = self.keyboard.get_modifier_state();
+        // let modifier_state = self.keyboard.get_modifier_state();
+        let modifier_state = ModifierState::new(16);
         let codes = modifier_state.diff_modifiers(modifiers);
         for code_state in codes {
             self.send_action(Action::Simulate(code_state.clone()));

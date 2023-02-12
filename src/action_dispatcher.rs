@@ -1,4 +1,4 @@
-use crate::common::*;
+use crate::x11::*;
 use x11::xlib::{Display, XCloseDisplay, XOpenDisplay};
 
 pub struct ActionDispatcher {
