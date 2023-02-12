@@ -1,5 +1,5 @@
-pub use event::*;
-pub use hello_rust::event::{self, KeyboardEvent};
+use event::*;
+use keyboarder::event::{self, KeyboardEvent};
 
 /// â
 /// ^

@@ -1,6 +1,6 @@
 use crate::event::CodeState;
 
 pub enum Action {
-    Sync(CodeState),
+    Simulate(CodeState),
     Reverse(CodeState),
 }

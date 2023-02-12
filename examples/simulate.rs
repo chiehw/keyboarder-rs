@@ -1,10 +1,10 @@
-use crate::event::{Event, KeyboardEvent};
 #[warn(unused_imports)]
-use common::*;
-use hello_rust::{
+use keyboarder::common::*;
+use keyboarder::event::{Event, KeyboardEvent};
+use keyboarder::keyboard::{Key, ModifierState};
+use keyboarder::{
     event::{Code, State},
     event_handler::EventHandler,
-    *,
 };
 
 use std::sync::Mutex;
@@ -33,11 +33,7 @@ fn main() -> anyhow::Result<()> {
     std::env::set_var("DISPLAY", ":0");
 
     /// todo:
-    /// 1. convert modifier state to modifier
-    /// 2. modifier to action.
-    /// 3. sync keyboard state.
     // 49 1: dead key
-    use rdev::Key;
     let key_event_down = KeyboardEvent::new(Code::KeySym(49), State::Press, vec![Key::ShiftLeft]);
     let key_event_up = KeyboardEvent::new(Code::KeySym(49), State::Release, vec![Key::ShiftLeft]);
 
@@ -45,7 +41,8 @@ fn main() -> anyhow::Result<()> {
     handle_events(&mut handler, &Event::KeyboardEvent(key_event_down))?;
     handle_events(&mut handler, &Event::KeyboardEvent(key_event_up))?;
 
-    handler.check_modifiers();
+    let modifier_state = ModifierState::new(16);
+    dbg!(&modifier_state);
 
     Ok(())
 }

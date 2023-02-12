@@ -1,8 +1,7 @@
 use crate::action::Action;
 use crate::common::*;
 use crate::event::{Event, Event::*, KeyboardEvent};
-use crate::keyboard::Keyboard;
-use rdev::Key;
+use crate::keyboard::{Key, Keyboard};
 
 pub struct EventHandler {
     keyboard: Keyboard,
@@ -38,12 +37,16 @@ impl EventHandler {
     }
 
     fn on_keyboard_event(&mut self, keyboard_event: &KeyboardEvent) {
-        self.check_modifiers();
-        self.send_action(Action::Sync(keyboard_event.code_state.clone()));
+        self.check_modifiers(&keyboard_event.modifiers);
+        self.send_action(Action::Simulate(keyboard_event.code_state.clone()));
     }
 
-    pub fn check_modifiers(&mut self) {
-        self.keyboard.get_current_modifiers();
+    pub fn check_modifiers(&mut self, modifiers: &[Key]) {
+        let modifier_state = self.keyboard.get_modifier_state();
+        let codes = modifier_state.compare_modifers(modifiers);
+        for code_state in codes {
+            self.send_action(Action::Simulate(code_state.clone()));
+        }
     }
 
     fn send_action(&mut self, action: Action) {

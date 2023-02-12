@@ -1,4 +1,4 @@
-use rdev::Key;
+use crate::keyboard::Key;
 
 /// todo?: Is repeat necessary?
 
@@ -34,6 +34,13 @@ impl CodeState {
     pub fn new(code: Code, state: State) -> Self {
         Self { code, state }
     }
+
+    pub fn with_key(key: Key, _press: bool) -> Self {
+        Self {
+            code: Code::KeyCode(key.into()),
+            state: crate::event::State::Press,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +53,7 @@ pub enum Code {
 pub enum State {
     Press,
     Release,
+    Click,
 }
 
 impl From<bool> for State {
