@@ -4,5 +4,6 @@
 
 - [ ] Simulate keyboard input
   - [ ] by keycode.
-  - [ ] by char
+  - [ ] by keysym.
+  - [ ] by char.
 - [ ] Record && Replay
