@@ -1,13 +1,4 @@
-use std::{
-    collections::HashMap,
-    ffi::{CStr, OsStr},
-    os::unix::prelude::OsStrExt,
-};
-
-use xkbcommon::xkb;
-
-use super::{keyboard::Key, PhysKeyCode};
-use crate::common::*;
+use super::keyboard::Key;
 
 macro_rules! decl_keycodes {
     ($($key:ident, $code:literal),*) => {
@@ -139,4 +130,3 @@ decl_keycodes!(
     MetaRight, 134,
     Apps, 135
 );
-

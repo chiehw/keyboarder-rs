@@ -1,5 +1,5 @@
 use crate::event::CodeState;
-use anyhow::{anyhow, ensure};
+use anyhow::ensure;
 use bitflags::*;
 use std::{
     cell::RefCell,
@@ -7,6 +7,7 @@ use std::{
     ffi::{CStr, OsStr},
     os::unix::prelude::OsStrExt,
 };
+
 use xkbcommon::xkb;
 
 #[derive(Debug)]
@@ -484,40 +485,45 @@ pub fn build_physkeycode_map(keymap: &xkb::Keymap) -> HashMap<xkb::Keycode, Phys
     map
 }
 
-pub struct Keyboard {
+pub struct XKeyboard {
     phys_code_map: RefCell<HashMap<xkb::Keycode, PhysKeyCode>>,
     state: RefCell<xkb::State>,
+    device_id: u8,
 }
 
-impl Keyboard {
+impl XKeyboard {
     pub fn new(connection: &xcb::Connection) -> anyhow::Result<Self> {
         let context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-        let device_id = xkb::x11::get_core_keyboard_device_id(&connection);
+        let device_id = xkb::x11::get_core_keyboard_device_id(connection);
         ensure!(device_id != -1, "Couldn't find core keyboard device");
 
         let keymap = xkb::x11::keymap_new_from_device(
             &context,
-            &connection,
+            connection,
             device_id,
             xkb::KEYMAP_COMPILE_NO_FLAGS,
         );
         let state = xkb::x11::state_new_from_device(&keymap, connection, device_id);
-
         let phys_code_map = build_physkeycode_map(&keymap);
+
         Ok(Self {
             phys_code_map: RefCell::new(phys_code_map),
             state: RefCell::new(state),
+            device_id: device_id as _,
         })
     }
 
-    pub fn process_key_press_impl(&self) {
+    pub fn process_key_event_impl(&self) {
         let xcode: xkb::Keycode = 9;
-        let pressed: bool = true;
+        let _pressed: bool = true;
 
-        let phys_code = self.phys_code_map.borrow().get(&xcode).copied();
+        let _phys_code = self.phys_code_map.borrow().get(&xcode).copied();
         let raw_modifiers = self.get_key_modifiers();
+        dbg!(raw_modifiers);
     }
 
+    /// https://stackoverflow.com/questions/69656145/how-does-modifiersas-in-xmodmap-work-under-linux-operating-system
+    /// Use xmodmap -pm to get meaning of modifier  
     pub fn get_key_modifiers(&self) -> Modifiers {
         let mut res = Modifiers::default();
 
@@ -528,14 +534,16 @@ impl Keyboard {
             res |= Modifiers::CTRL;
         }
         if self.mod_is_active(xkb::MOD_NAME_ALT) {
-            // Mod1
             res |= Modifiers::ALT;
         }
         if self.mod_is_active(xkb::MOD_NAME_LOGO) {
-            // Mod4
             res |= Modifiers::META;
         }
         res
+    }
+
+    pub fn device_id(&self) -> u8 {
+        self.device_id
     }
 
     fn mod_is_active(&self, modifier: &str) -> bool {
@@ -593,9 +601,9 @@ impl TryFrom<String> for Modifiers {
     }
 }
 
-impl Into<String> for &Modifiers {
-    fn into(self) -> String {
-        self.to_string()
+impl From<Modifiers> for String {
+    fn from(modifiers: Modifiers) -> String {
+        modifiers.to_string()
     }
 }
 

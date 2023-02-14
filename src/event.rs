@@ -1,4 +1,4 @@
-use crate::x11::Key;
+use crate::x11::{Key, Modifiers, PhysKeyCode};
 
 /// todo?: Is repeat necessary?
 
@@ -63,4 +63,19 @@ impl From<bool> for State {
             false => State::Release,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeyEvent {
+    /// Which key was pressed.
+    /// This is the potentially processed/composed version
+    /// of the input.
+    pub key: u32,
+    /// If true, this is a key down rather than a key up event
+    pub pressed: bool,
+    /// Which modifiers are down
+    pub modifiers: Modifiers,
+
+    /// How many times this key repeats
+    pub repeat_count: u16,
 }
