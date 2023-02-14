@@ -42,7 +42,7 @@ impl XSimulator {
     }
 
     fn process_key_event_impl(&self, keycode: u8, pressed: bool) -> anyhow::Result<()> {
-        self.send_native(keycode, pressed)?;
+        self.send_native(keycode, pressed)?;mian
         Ok(())
     }
 
