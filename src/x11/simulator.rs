@@ -1,4 +1,7 @@
-use std::cell::RefCell;
+use std::{
+    cell::RefCell,
+    rc::{Rc, Weak},
+};
 
 use anyhow::Context;
 use xkbcommon::xkb;
@@ -10,7 +13,7 @@ const XCB_KEY_PRESS: u8 = 2;
 const XCB_KEY_RELEASE: u8 = 3;
 
 pub struct XSimulator {
-    conn: XConnection,
+    conn: Weak<XConnection>,
     device_id: u8,
     pressed_key: Vec<u32>,
     screen_num: i32,
@@ -18,12 +21,12 @@ pub struct XSimulator {
 }
 
 impl XSimulator {
-    pub fn new(conn: XConnection) -> Self {
+    pub fn new(conn: &Rc<XConnection>) -> Self {
         let screen_num: i32 = conn.screen_num;
         let root = conn.root;
         let device_id = conn.keyboard.device_id();
         Self {
-            conn,
+            conn: Rc::downgrade(conn),
             pressed_key: vec![],
             screen_num,
             root,
@@ -37,12 +40,10 @@ impl XSimulator {
         };
     }
 
-    pub fn simualte_keysym(&self, keysym: u32, pressed: bool){
-
-    }
+    pub fn simualte_keysym(&self, keysym: u32, pressed: bool) {}
 
     fn process_key_event_impl(&self, keycode: u8, pressed: bool) -> anyhow::Result<()> {
-        self.send_native(keycode, pressed)?;mian
+        self.send_native(keycode, pressed)?;
         Ok(())
     }
 
@@ -51,7 +52,8 @@ impl XSimulator {
             true => XCB_KEY_PRESS,
             false => XCB_KEY_RELEASE,
         };
-        self.conn.send_request_no_reply_log(&xcb::xtest::FakeInput {
+        let conn = self.conn();
+        conn.send_request_no_reply_log(&xcb::xtest::FakeInput {
             r#type,
             detail: keycode,
             time: 0,
@@ -60,9 +62,19 @@ impl XSimulator {
             root_y: 0,
             deviceid: self.device_id,
         });
-        self.conn.flush().context("flushing pending requests")?;
+        conn.flush().context("flushing pending requests")?;
 
         anyhow::Ok(())
+    }
+
+    fn conn(&self) -> Rc<XConnection> {
+        self.conn.upgrade().expect("XConnection to be alive")
+    }
+}
+
+impl Drop for XSimulator {
+    fn drop(&mut self) {
+        // todo: release all pressed keys.
     }
 }
 

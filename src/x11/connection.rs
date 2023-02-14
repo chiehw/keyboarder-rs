@@ -1,5 +1,6 @@
 use super::XKeyboard;
 use anyhow::{anyhow, Context};
+use std::rc::Rc;
 
 pub struct XConnection {
     pub conn: xcb::Connection,
@@ -9,7 +10,7 @@ pub struct XConnection {
 }
 
 impl XConnection {
-    pub fn create_new() -> anyhow::Result<XConnection> {
+    pub fn create_new() -> anyhow::Result<Rc<XConnection>> {
         let (conn, screen_num) =
             xcb::Connection::connect_with_xlib_display_and_extensions(&[xcb::Extension::Xkb], &[])?;
         let screen = conn
@@ -21,12 +22,12 @@ impl XConnection {
 
         let keyboard = XKeyboard::new(&conn)?;
 
-        let conn = XConnection {
+        let conn = Rc::new(XConnection {
             conn,
             screen_num,
             root,
             keyboard,
-        };
+        });
 
         anyhow::Ok(conn)
     }
