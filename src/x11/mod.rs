@@ -1,5 +1,4 @@
 mod connection;
-mod ffi;
 mod keyboard;
 mod keycodes;
 mod simulator;

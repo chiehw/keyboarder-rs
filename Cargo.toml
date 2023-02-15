@@ -19,3 +19,5 @@ tfc = {git = "https://github.com/fufesou/The-Fat-Controller"}
 x11 = {version = "2.19", features = ["xlib_xcb", "xlib"]}
 xcb = {version = "1.2", features = ["render", "randr", "dri2", "xkb", "xlib_xcb", "present", "xtest"]}
 xkbcommon = {version = "0.5.0", features = ["x11", "wayland"]}
+strum = "0.24"
+strum_macros = "0.24"

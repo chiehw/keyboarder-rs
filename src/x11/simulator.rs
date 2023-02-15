@@ -1,13 +1,14 @@
+use crate::event::{DeadKeyStatus, KeyCode, KeyEvent, KeyboardEvent};
+
+use super::{PhysKeyCode, XConnection};
+use anyhow::{ensure, Context, Ok};
 use std::{
     cell::RefCell,
+    collections::HashSet,
     rc::{Rc, Weak},
 };
-
-use anyhow::Context;
-use xkbcommon::xkb;
-
-use super::XConnection;
 use xkb::compose::Status as ComposeStatus;
+use xkbcommon::xkb;
 
 const XCB_KEY_PRESS: u8 = 2;
 const XCB_KEY_RELEASE: u8 = 3;
@@ -15,34 +16,110 @@ const XCB_KEY_RELEASE: u8 = 3;
 pub struct XSimulator {
     conn: Weak<XConnection>,
     device_id: u8,
-    pressed_key: Vec<u32>,
-    screen_num: i32,
+    pressed_key: HashSet<u8>,
+    dead_key_status: DeadKeyStatus,
     root: xcb::x::Window,
 }
 
 impl XSimulator {
     pub fn new(conn: &Rc<XConnection>) -> Self {
-        let screen_num: i32 = conn.screen_num;
         let root = conn.root;
         let device_id = conn.keyboard.device_id();
+
         Self {
             conn: Rc::downgrade(conn),
-            pressed_key: vec![],
-            screen_num,
+            pressed_key: HashSet::new(),
             root,
             device_id,
+            dead_key_status: DeadKeyStatus::None,
         }
     }
 
-    pub fn simulate_keycode(&self, keycode: u8, pressed: bool) {
-        if let Err(err) = self.process_key_event_impl(keycode, pressed) {
+    pub fn simulate_keycode(&mut self, keycode: u32, pressed: bool) {
+        if let Err(err) = self.process_keycode_event_impl(keycode, pressed) {
             log::error!("{err:#}")
         };
     }
 
-    pub fn simualte_keysym(&self, keysym: u32, pressed: bool) {}
+    pub fn simulate_keysym(&mut self, keysym: u32, pressed: bool) {
+        let keyboard = &self.conn().keyboard;
+        if let Some(keycode) = keyboard.get_keycode_by_keysym(keysym) {
+            self.simulate_keycode(keycode, pressed);
+        } else {
+            log::error!(
+                "No keysym {:?} in {:?}",
+                keysym,
+                keyboard.get_active_layout_name()
+            );
+        };
+    }
 
-    fn process_key_event_impl(&self, keycode: u8, pressed: bool) -> anyhow::Result<()> {
+    pub fn simulate_phys(&mut self, phys: PhysKeyCode, pressed: bool) {
+        let keyboard = &self.conn().keyboard;
+        if let Some(keycode) = keyboard.get_keycode_by_phys(phys) {
+            self.simulate_keycode(keycode, pressed);
+        } else {
+            log::error!(
+                "No PhysKeyCode {:?} in {:?}",
+                phys,
+                keyboard.get_active_layout_name()
+            );
+        };
+    }
+
+    pub fn simulate_keyboard_event(&mut self, keyboard_event: &KeyboardEvent) {
+        if let Err(err) = self.process_keyboard_event_impl(keyboard_event) {
+            log::error!("{err:#}")
+        };
+    }
+
+    fn process_keyboard_event_impl(
+        &mut self,
+        keyboard_event: &KeyboardEvent,
+    ) -> anyhow::Result<()> {
+        let keyboard = &self.conn().keyboard;
+
+        let current_modifiers = keyboard.get_current_modifiers();
+        let key_event_vec = current_modifiers.diff_modifiers(&keyboard_event.key_event.modifiers);
+        println!("{:?}", &key_event_vec);
+
+        self.prepare_pressed_keys(&key_event_vec)?;
+        let key_event = &keyboard_event.key_event;
+
+        match key_event.key {
+            KeyCode::RawCode(keycode) => self.simulate_keycode(keycode, key_event.press),
+            KeyCode::Physical(phys) => self.simulate_phys(phys, key_event.press),
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    /// restore_flag is used to restore the keyboard state.
+    fn prepare_pressed_keys(&mut self, key_event_vec: &Vec<KeyEvent>) -> anyhow::Result<()> {
+        for key_event in key_event_vec {
+            if let KeyCode::Physical(phys) = key_event.key {
+                let press = key_event.press;
+                match key_event.press {
+                    true => self.simulate_phys(phys, press),
+                    false => self.simulate_phys(phys, press),
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn process_keycode_event_impl(&mut self, keycode: u32, pressed: bool) -> anyhow::Result<()> {
+        ensure!(
+            (8..=255).contains(&keycode),
+            "Unexpected keycode, keycode should in (8, 255)"
+        );
+        let keycode: u8 = keycode.try_into()?;
+
+        match pressed {
+            true => self.pressed_key.insert(keycode),
+            false => self.pressed_key.remove(&keycode),
+        };
         self.send_native(keycode, pressed)?;
         Ok(())
     }
@@ -63,6 +140,12 @@ impl XSimulator {
             deviceid: self.device_id,
         });
         conn.flush().context("flushing pending requests")?;
+        log::debug!(
+            "simualte keycode {:?}({:?}) -> {:?}",
+            keycode,
+            conn.keyboard.get_phys_by_keycode(keycode.into()).unwrap(),
+            press
+        );
 
         anyhow::Ok(())
     }
@@ -74,7 +157,14 @@ impl XSimulator {
 
 impl Drop for XSimulator {
     fn drop(&mut self) {
-        // todo: release all pressed keys.
+        if !self.pressed_key.is_empty() {
+            log::debug!("Auto release key: {:?}", self.pressed_key);
+            for keycode in &self.pressed_key {
+                if let Err(err) = self.send_native(*keycode, false) {
+                    log::error!("{err:#}")
+                };
+            }
+        }
     }
 }
 
@@ -100,13 +190,4 @@ impl Compose {
         let _previously_composing = !self.composition.is_empty();
         self.state.feed(xsym);
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DeadKeyStatus {
-    /// Not in a dead key processing hold
-    None,
-    /// Holding until composition is done; the string is the uncommitted
-    /// composition text to show as a placeholder
-    Composing(String),
 }

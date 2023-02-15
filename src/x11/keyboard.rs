@@ -1,5 +1,5 @@
-use crate::event::CodeState;
-use anyhow::ensure;
+use crate::event::{CodeState, KeyEvent};
+use anyhow::{anyhow, ensure};
 use bitflags::*;
 use std::{
     cell::RefCell,
@@ -8,7 +8,7 @@ use std::{
     os::unix::prelude::OsStrExt,
 };
 
-use xkbcommon::xkb;
+use xkbcommon::xkb::{self};
 
 #[derive(Debug)]
 pub struct ModifierState {
@@ -26,49 +26,6 @@ impl ModifierState {
             alt: mask & Mod1Mask == Mod1Mask,
             meta: mask & Mod4Mask == Mod4Mask,
         }
-    }
-
-    /// todo!: return extra_modifiers, missing_modifiers
-    ///
-    ///  Get the codes that should be clicked,
-    /// modifiers of both side can be sync after clicking the keys.
-    ///
-    /// The modifers in the vec represent the active state of the remote modifier,
-    /// compare it with the local modifiers.
-    pub fn diff_modifiers(&self, modifiers: &[Key]) -> Vec<CodeState> {
-        let mut codes: Vec<CodeState> = vec![];
-
-        let shift = modifiers.contains(&Key::ShiftLeft) || modifiers.contains(&Key::ShiftRight);
-        let ctrl = modifiers.contains(&Key::ControlLeft) || modifiers.contains(&Key::ControlRight);
-        let alt = modifiers.contains(&Key::AltLeft) || modifiers.contains(&Key::AltRight);
-        let meta = modifiers.contains(&Key::MetaLeft) || modifiers.contains(&Key::MetaRight);
-
-        if !shift && self.shift {
-            codes.push(CodeState::with_key(Key::ShiftLeft, false))
-        }
-        if shift && !self.shift {
-            codes.push(CodeState::with_key(Key::ShiftLeft, true))
-        }
-        if !ctrl && self.ctrl {
-            codes.push(CodeState::with_key(Key::ControlLeft, false))
-        }
-        if ctrl && !self.ctrl {
-            codes.push(CodeState::with_key(Key::ControlLeft, true))
-        }
-        if !alt && self.alt {
-            codes.push(CodeState::with_key(Key::AltLeft, false))
-        }
-        if alt && !self.alt {
-            codes.push(CodeState::with_key(Key::AltLeft, true))
-        }
-        if !meta && self.meta {
-            codes.push(CodeState::with_key(Key::MetaLeft, false))
-        }
-        if meta && !self.meta {
-            codes.push(CodeState::with_key(Key::MetaLeft, true))
-        }
-
-        codes
     }
 }
 
@@ -358,8 +315,14 @@ pub fn query_lc_ctype() -> anyhow::Result<&'static OsStr> {
     Ok(OsStr::from_bytes(cstr.to_bytes()))
 }
 
-pub fn build_physkeycode_map(keymap: &xkb::Keymap) -> HashMap<xkb::Keycode, PhysKeyCode> {
-    let mut map = HashMap::new();
+pub fn build_phys_keycode_map(
+    keymap: &xkb::Keymap,
+) -> (
+    HashMap<xkb::Keycode, PhysKeyCode>,
+    HashMap<PhysKeyCode, xkb::Keycode>,
+) {
+    let mut phys_code_map = HashMap::new();
+    let mut code_phys_map = HashMap::new();
 
     // See <https://abaines.me.uk/updates/linux-x11-keys> for info on
     // these names and how they relate to the ANSI standard US keyboard
@@ -478,17 +441,23 @@ pub fn build_physkeycode_map(keymap: &xkb::Keymap) -> HashMap<xkb::Keycode, Phys
         ("HELP", PhysKeyCode::Help),
     ] {
         if let Some(code) = keymap.key_by_name(name) {
-            map.insert(code, *phys);
+            code_phys_map.insert(code, *phys);
+            phys_code_map.insert(*phys, code);
         }
     }
 
-    map
+    (code_phys_map, phys_code_map)
 }
 
 pub struct XKeyboard {
-    phys_code_map: RefCell<HashMap<xkb::Keycode, PhysKeyCode>>,
+    phys_code_map: RefCell<HashMap<PhysKeyCode, xkb::Keycode>>,
+    code_phys_map: RefCell<HashMap<xkb::Keycode, PhysKeyCode>>,
+    keysym_map: RefCell<HashMap<xkb::Keycode, xkb::Keycode>>,
+    unused_keycodes: RefCell<Vec<xkb::Keycode>>,
     state: RefCell<xkb::State>,
+    keymap: xkb::Keymap,
     device_id: u8,
+    layout_index: u32,
 }
 
 impl XKeyboard {
@@ -504,27 +473,46 @@ impl XKeyboard {
             xkb::KEYMAP_COMPILE_NO_FLAGS,
         );
         let state = xkb::x11::state_new_from_device(&keymap, connection, device_id);
-        let phys_code_map = build_physkeycode_map(&keymap);
+        let (code_phys_map, phys_code_map) = build_phys_keycode_map(&keymap);
+        let mut keysym_map = HashMap::new();
+        let mut unused_keycodes: Vec<xkb::Keycode> = vec![];
+
+        let min_keycode = keymap.min_keycode();
+        let max_keycode = keymap.max_keycode();
+
+        for keycode in min_keycode..max_keycode {
+            let keysym = state.key_get_one_sym(keycode);
+            if keysym == 0 {
+                unused_keycodes.push(keysym);
+            } else {
+                keysym_map.insert(keysym, keycode);
+            }
+        }
+
+        let layout_num = keymap.num_layouts();
+        let mut layout_index = 0;
+        for idx in 0..layout_num {
+            let res = state.layout_index_is_active(idx, xkb::STATE_LAYOUT_LOCKED);
+            if res {
+                layout_index = idx;
+            }
+        }
 
         Ok(Self {
             phys_code_map: RefCell::new(phys_code_map),
+            code_phys_map: RefCell::new(code_phys_map),
+            keysym_map: RefCell::new(keysym_map),
+            unused_keycodes: RefCell::new(unused_keycodes),
             state: RefCell::new(state),
+            keymap,
             device_id: device_id as _,
+            layout_index,
         })
-    }
-
-    pub fn process_key_event_impl(&self) {
-        let xcode: xkb::Keycode = 9;
-        let _pressed: bool = true;
-
-        let _phys_code = self.phys_code_map.borrow().get(&xcode).copied();
-        let raw_modifiers = self.get_key_modifiers();
-        dbg!(raw_modifiers);
     }
 
     /// https://stackoverflow.com/questions/69656145/how-does-modifiersas-in-xmodmap-work-under-linux-operating-system
     /// Use xmodmap -pm to get meaning of modifier  
-    pub fn get_key_modifiers(&self) -> Modifiers {
+    pub fn get_current_modifiers(&self) -> Modifiers {
         let mut res = Modifiers::default();
 
         if self.mod_is_active(xkb::MOD_NAME_SHIFT) {
@@ -539,11 +527,59 @@ impl XKeyboard {
         if self.mod_is_active(xkb::MOD_NAME_LOGO) {
             res |= Modifiers::META;
         }
+        if self.mod_is_active(xkb::MOD_NAME_CAPS) {
+            res |= Modifiers::CAPS;
+        }
+        if self.mod_is_active(xkb::MOD_NAME_NUM) {
+            res |= Modifiers::NUM;
+        }
         res
     }
 
     pub fn device_id(&self) -> u8 {
         self.device_id
+    }
+
+    pub fn get_keycode_by_keysym(&self, keysym: u32) -> Option<u32> {
+        let keysym_map = self.keysym_map.borrow();
+        if !keysym_map.contains_key(&keysym) {
+            None
+        } else {
+            keysym_map.get(&keysym).copied()
+        }
+    }
+
+    pub fn get_keycode_by_phys(&self, phys: PhysKeyCode) -> Option<u32> {
+        let keysym_map = self.phys_code_map.borrow();
+        if !keysym_map.contains_key(&phys) {
+            None
+        } else {
+            keysym_map.get(&phys).copied()
+        }
+    }
+
+    pub fn get_phys_by_keycode(&self, keycode: xkb::Keycode) -> Option<PhysKeyCode> {
+        let keysym_map = self.code_phys_map.borrow();
+        if !keysym_map.contains_key(&keycode) {
+            None
+        } else {
+            keysym_map.get(&keycode).copied()
+        }
+    }
+
+    pub fn keysym_is_dead_key(&self, keysym: xkb::Keysym) -> bool {
+        let name = xkb::keysym_get_name(keysym);
+        dbg!(&name);
+        name.starts_with("dead")
+    }
+
+    pub fn get_active_layout_name(&self) -> String {
+        let layout_name = self.keymap.layout_get_name(self.layout_index);
+        layout_name.to_owned()
+    }
+
+    fn get_active_layout_index(&self) -> u32 {
+        self.layout_index
     }
 
     fn mod_is_active(&self, modifier: &str) -> bool {
@@ -569,6 +605,9 @@ bitflags! {
         const RIGHT_CTRL = 1<<8;
         const LEFT_SHIFT = 1<<9;
         const RIGHT_SHIFT = 1<<10;
+
+        const CAPS = 1<<11;
+        const NUM = 1<<12;
     }
 }
 
@@ -651,5 +690,45 @@ impl Modifiers {
             | Self::RIGHT_CTRL
             | Self::LEFT_SHIFT
             | Self::RIGHT_SHIFT)
+    }
+
+    /// todo!: return extra_modifiers, missing_modifiers
+    ///
+    ///  Get the codes that should be clicked,
+    /// modifiers of both side can be sync after clicking the keys.
+    ///
+    /// The modifers in the vec represent the active state of the remote modifier,
+    /// compare it with the local modifiers.
+    pub fn diff_modifiers(&self, modifiers: &Modifiers) -> Vec<KeyEvent> {
+        let mut key_event_vec: Vec<KeyEvent> = vec![];
+        let target_modifiers = modifiers.remove_positional_mods();
+
+        for pair in &[
+            (Modifiers::SHIFT, PhysKeyCode::ShiftLeft),
+            (Modifiers::CTRL, PhysKeyCode::ControlLeft),
+            (Modifiers::ALT, PhysKeyCode::AltLeft),
+            (Modifiers::META, PhysKeyCode::MetaLeft),
+            (Modifiers::CAPS, PhysKeyCode::CapsLock),
+            (Modifiers::NUM, PhysKeyCode::NumLock),
+        ] {
+            let (modifier, phys) = pair.to_owned();
+
+            let pressed = target_modifiers.contains(modifier);
+            if modifier == Modifiers::CAPS || modifier == Modifiers::NUM {
+                if pressed && !self.contains(modifier) || !pressed && self.contains(modifier) {
+                    key_event_vec.push(KeyEvent::with_phys(phys, true));
+                    key_event_vec.push(KeyEvent::with_phys(phys, false));
+                }
+                continue;
+            }
+            if !pressed && self.contains(modifier) {
+                key_event_vec.push(KeyEvent::with_phys(phys, false))
+            }
+            if pressed && !self.contains(modifier) {
+                key_event_vec.push(KeyEvent::with_phys(phys, true))
+            }
+        }
+
+        key_event_vec
     }
 }
