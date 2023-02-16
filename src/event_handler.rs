@@ -1,8 +1,7 @@
 use crate::action::Action;
 use crate::common::*;
 use crate::event::{Event, Event::*, KeyEvent};
-use crate::x11::Key;
-use crate::x11::*;
+use crate::platform_impl::Key;
 
 pub struct EventHandler {
     // keyboard: Keyboard,
@@ -39,9 +38,9 @@ impl EventHandler {
         Ok(self.actions.drain(..).collect())
     }
 
-    fn on_keyboard_event(&mut self, keyboard_event: &KeyEvent) {}
+    fn on_keyboard_event(&mut self, _keyboard_event: &KeyEvent) {}
 
-    pub fn update_modifiers(&mut self, modifiers: &[Key]) {
+    pub fn update_modifiers(&mut self, _modifiers: &[Key]) {
         // let modifier_state = self.keyboard.get_modifier_state();
     }
 

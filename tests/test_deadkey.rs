@@ -1,7 +1,5 @@
-use event::*;
 use keyboarder::{
-    event::{self},
-    x11::{XConnection, XSimulator},
+    platform_impl::{XConnection, XSimulator},
 };
 
 /// â

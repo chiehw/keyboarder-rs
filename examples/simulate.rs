@@ -1,7 +1,4 @@
-use keyboarder::{
-    event::{KeyCode, KeyEvent},
-    x11::{Modifiers, PhysKeyCode, XConnection, XSimulator},
-};
+use keyboarder::platform_impl::{XConnection, XSimulator};
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();

@@ -1,5 +1,5 @@
-use crate::event::{CodeState, KeyCode, KeyEvent};
-use anyhow::{anyhow, ensure};
+use crate::event::{KeyCode, KeyEvent};
+use anyhow::ensure;
 use bitflags::*;
 use std::{
     cell::RefCell,

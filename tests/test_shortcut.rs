@@ -1,7 +1,7 @@
 use event::*;
 use keyboarder::{
     event::{self},
-    x11::{Modifiers, XConnection, XSimulator},
+    platform_impl::{Modifiers, XConnection, XSimulator},
 };
 
 // / # shortcut

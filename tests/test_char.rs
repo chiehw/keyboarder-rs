@@ -1,6 +1,6 @@
 use keyboarder::{
-    event::{self, KeyCode, KeyEvent},
-    x11::{Modifiers, PhysKeyCode, XConnection, XSimulator},
+    event::{KeyCode, KeyEvent},
+    platform_impl::{Modifiers, PhysKeyCode, XConnection, XSimulator},
 };
 /// 1
 /// a

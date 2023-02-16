@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::x11::{Key, Modifiers, PhysKeyCode};
+use crate::platform_impl::{Key, Modifiers, PhysKeyCode};
 
 /// todo?: Is repeat necessary?
 
