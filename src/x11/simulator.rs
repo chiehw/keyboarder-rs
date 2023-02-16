@@ -1,4 +1,4 @@
-use crate::event::{DeadKeyStatus, KeyCode, KeyEvent, KeyboardEvent};
+use crate::event::{DeadKeyStatus, KeyCode, KeyEvent};
 
 use super::{PhysKeyCode, XConnection};
 use anyhow::{ensure, Context, Ok};
@@ -35,16 +35,16 @@ impl XSimulator {
         }
     }
 
-    pub fn simulate_keycode(&mut self, keycode: u32, pressed: bool) {
-        if let Err(err) = self.process_keycode_event_impl(keycode, pressed) {
+    pub fn simulate_keycode(&mut self, keycode: u32, press: bool) {
+        if let Err(err) = self.process_keycode_event_impl(keycode, press) {
             log::error!("{err:#}")
         };
     }
 
-    pub fn simulate_keysym(&mut self, keysym: u32, pressed: bool) {
+    pub fn simulate_keysym(&mut self, keysym: u32, press: bool) {
         let keyboard = &self.conn().keyboard;
         if let Some(keycode) = keyboard.get_keycode_by_keysym(keysym) {
-            self.simulate_keycode(keycode, pressed);
+            self.simulate_keycode(keycode, press);
         } else {
             log::error!(
                 "No keysym {:?} in {:?}",
@@ -54,10 +54,17 @@ impl XSimulator {
         };
     }
 
-    pub fn simulate_phys(&mut self, phys: PhysKeyCode, pressed: bool) {
+    pub fn simulate_char_without_modifiers(&mut self, chr: char) {
+        if let Err(err) = self.process_char_impl(chr) {
+            log::error!("{err:#}")
+        };
+    }
+
+    pub fn simulate_phys(&mut self, phys: PhysKeyCode, press: bool) {
         let keyboard = &self.conn().keyboard;
         if let Some(keycode) = keyboard.get_keycode_by_phys(phys) {
-            self.simulate_keycode(keycode, pressed);
+            dbg!(keycode);
+            self.simulate_keycode(keycode, press);
         } else {
             log::error!(
                 "No PhysKeyCode {:?} in {:?}",
@@ -67,32 +74,10 @@ impl XSimulator {
         };
     }
 
-    pub fn simulate_keyboard_event(&mut self, keyboard_event: &KeyboardEvent) {
-        if let Err(err) = self.process_keyboard_event_impl(keyboard_event) {
+    pub fn simulate_key_event(&mut self, key_event: &KeyEvent) {
+        if let Err(err) = self.process_key_event_impl(key_event) {
             log::error!("{err:#}")
         };
-    }
-
-    fn process_keyboard_event_impl(
-        &mut self,
-        keyboard_event: &KeyboardEvent,
-    ) -> anyhow::Result<()> {
-        let keyboard = &self.conn().keyboard;
-
-        let current_modifiers = keyboard.get_current_modifiers();
-        let key_event_vec = current_modifiers.diff_modifiers(&keyboard_event.key_event.modifiers);
-        println!("{:?}", &key_event_vec);
-
-        self.prepare_pressed_keys(&key_event_vec)?;
-        let key_event = &keyboard_event.key_event;
-
-        match key_event.key {
-            KeyCode::RawCode(keycode) => self.simulate_keycode(keycode, key_event.press),
-            KeyCode::Physical(phys) => self.simulate_phys(phys, key_event.press),
-            _ => {}
-        }
-
-        Ok(())
     }
 
     /// restore_flag is used to restore the keyboard state.
@@ -109,18 +94,68 @@ impl XSimulator {
         Ok(())
     }
 
-    fn process_keycode_event_impl(&mut self, keycode: u32, pressed: bool) -> anyhow::Result<()> {
+    fn process_char_impl(&mut self, chr: char) -> anyhow::Result<()> {
+        let keyboard = &self.conn().keyboard;
+
+        let key_event = keyboard.get_key_event_by_char(chr);
+        ensure!(key_event.is_some(), "Not found char `{:?}`", chr);
+        self.process_key_event_impl(&key_event.unwrap())?;
+
+        Ok(())
+    }
+
+    fn process_key_event_impl(&mut self, key_event: &KeyEvent) -> anyhow::Result<()> {
+        let keyboard = &self.conn().keyboard;
+
+        let current_modifiers = keyboard.get_current_modifiers();
+        let key_event_vec = current_modifiers.diff_modifiers(&key_event.modifiers);
+
+        self.prepare_pressed_keys(&key_event_vec)?;
+
+        match key_event.key {
+            KeyCode::RawCode(keycode) => {
+                if key_event.click {
+                    self.simulate_keycode(keycode, true);
+                    self.simulate_keycode(keycode, false);
+                } else {
+                    self.simulate_keycode(keycode, key_event.press)
+                };
+            }
+            KeyCode::KeySym(keysym) => {
+                if key_event.click {
+                    self.simulate_keysym(keysym, true);
+                    self.simulate_keysym(keysym, false);
+                } else {
+                    self.simulate_keysym(keysym, key_event.press)
+                };
+            }
+            KeyCode::Physical(phys) => {
+                if key_event.click {
+                    self.simulate_phys(phys, true);
+                    self.simulate_phys(phys, false);
+                } else {
+                    self.simulate_phys(phys, key_event.press)
+                };
+            }
+
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    fn process_keycode_event_impl(&mut self, keycode: u32, press: bool) -> anyhow::Result<()> {
         ensure!(
             (8..=255).contains(&keycode),
             "Unexpected keycode, keycode should in (8, 255)"
         );
         let keycode: u8 = keycode.try_into()?;
 
-        match pressed {
+        match press {
             true => self.pressed_key.insert(keycode),
             false => self.pressed_key.remove(&keycode),
         };
-        self.send_native(keycode, pressed)?;
+        self.send_native(keycode, press)?;
         Ok(())
     }
 
@@ -153,10 +188,8 @@ impl XSimulator {
     fn conn(&self) -> Rc<XConnection> {
         self.conn.upgrade().expect("XConnection to be alive")
     }
-}
 
-impl Drop for XSimulator {
-    fn drop(&mut self) {
+    fn release_pressed_keys(&mut self) {
         if !self.pressed_key.is_empty() {
             log::debug!("Auto release key: {:?}", self.pressed_key);
             for keycode in &self.pressed_key {
@@ -164,7 +197,14 @@ impl Drop for XSimulator {
                     log::error!("{err:#}")
                 };
             }
+            self.pressed_key.clear();
         }
+    }
+}
+
+impl Drop for XSimulator {
+    fn drop(&mut self) {
+        self.release_pressed_keys();
     }
 }
 

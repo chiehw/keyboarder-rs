@@ -2,8 +2,14 @@
 
 # To Do List
 
-- [ ] Simulate keyboard input
-  - [ ] by keycode.
-  - [ ] by keysym.
-  - [ ] by char.
+- [x] Simulate keyboard input: Simulate && auto release when app exit.
+  - [x] by keycode.
+  - [x] by keysym.
+  - [x] by char.
+  - [x] by key_event.
+- [ ] Multiple input method: Auto update map.
 - [ ] Record && Replay
+  - [ ] 
+- [ ] Network
+  - [ ] Serialize.
+  - [ ] Deserialize.

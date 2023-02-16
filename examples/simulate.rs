@@ -1,5 +1,5 @@
 use keyboarder::{
-    event::{KeyCode, KeyEvent, KeyboardEvent},
+    event::{KeyCode, KeyEvent},
     x11::{Modifiers, PhysKeyCode, XConnection, XSimulator},
 };
 
@@ -10,23 +10,13 @@ fn main() -> anyhow::Result<()> {
     let conn = XConnection::create_new()?;
     let mut simulator = XSimulator::new(&conn);
 
-    // shift + delete = 1 in French
-    simulator.simulate_keyboard_event(&KeyboardEvent {
-        key_event: KeyEvent {
-            key: KeyCode::Physical(PhysKeyCode::Delete),
-            press: true,
-            modifiers: Modifiers::SHIFT,
-        },
-        pressed_keys: vec![],
-    });
-    simulator.simulate_keyboard_event(&KeyboardEvent {
-        key_event: KeyEvent {
-            key: KeyCode::Physical(PhysKeyCode::Delete),
-            press: false,
-            modifiers: Modifiers::SHIFT,
-        },
-        pressed_keys: vec![],
-    });
+    simulator.simulate_char_without_modifiers('¹');
+    simulator.simulate_char_without_modifiers('¡');
+
+    // todo:
+    // keyevent(keycode, char);
+    // test char event map
+    // test modifiers for altgr, to string
 
     Ok(())
 }

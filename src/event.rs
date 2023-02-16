@@ -6,7 +6,7 @@ use crate::x11::{Key, Modifiers, PhysKeyCode};
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    KeyboardEvent(KeyboardEvent),
+    KeyEvent(KeyEvent),
     OverrideTimeout,
 }
 
@@ -59,6 +59,18 @@ pub struct KeyEvent {
     pub press: bool,
     /// Which modifiers are down
     pub modifiers: Modifiers,
+    pub click: bool,
+}
+
+impl Default for KeyEvent {
+    fn default() -> KeyEvent {
+        Self {
+            key: KeyCode::RawCode(0),
+            press: false,
+            modifiers: Modifiers::NONE,
+            click: false,
+        }
+    }
 }
 
 impl KeyEvent {
@@ -67,6 +79,7 @@ impl KeyEvent {
             key: KeyCode::Physical(key),
             press,
             modifiers: Modifiers::NONE,
+            click: false,
         }
     }
 
@@ -75,6 +88,7 @@ impl KeyEvent {
             key,
             press,
             modifiers: Modifiers::NONE,
+            click: false,
         }
     }
 }
@@ -94,6 +108,7 @@ pub enum KeyCode {
     Char(char),
     Composed(String),
     RawCode(u32),
+    KeySym(u32),
     Physical(PhysKeyCode),
 
     Hyper,
@@ -196,17 +211,62 @@ impl KeyCode {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct KeyboardEvent {
-    pub key_event: KeyEvent,
-    pub pressed_keys: Vec<PhysKeyCode>,
+pub fn is_ascii_control(c: char) -> Option<char> {
+    let c = c as u32;
+    if c < 0x20 {
+        let de_ctrl = ((c as u8) | 0x40) as char;
+        Some(de_ctrl.to_ascii_lowercase())
+    } else {
+        None
+    }
 }
 
-impl KeyboardEvent {
-    pub fn new(key_event: KeyEvent, pressed_keys: Vec<PhysKeyCode>) -> Self {
-        Self {
-            key_event,
-            pressed_keys,
+fn normalize_shift(key: KeyCode, modifiers: Modifiers) -> (KeyCode, Modifiers) {
+    if modifiers.contains(Modifiers::SHIFT) {
+        match key {
+            KeyCode::Char(c) if c.is_ascii_uppercase() => (key, modifiers - Modifiers::SHIFT),
+            KeyCode::Char(c) if c.is_ascii_lowercase() => (
+                KeyCode::Char(c.to_ascii_uppercase()),
+                modifiers - Modifiers::SHIFT,
+            ),
+            _ => (key, modifiers),
         }
+    } else {
+        (key, modifiers)
+    }
+}
+
+fn normalize_ctrl(key: KeyCode, modifiers: Modifiers) -> (KeyCode, Modifiers) {
+    if modifiers.contains(Modifiers::CTRL) {
+        if let KeyCode::Char(c) = key {
+            if (c as u32) < 0x20 {
+                let de_ctrl = ((c as u8) | 0x40) as char;
+                return (KeyCode::Char(de_ctrl.to_ascii_lowercase()), modifiers);
+            }
+        }
+    }
+    (key, modifiers)
+}
+
+impl KeyEvent {
+    /// if SHIFT is held and we have KeyCode::Char('c') we want to normalize
+    /// that keycode to KeyCode::Char('C'); that is what this function does.
+    pub fn normalize_shift(mut self) -> Self {
+        let (key, modifiers) = normalize_shift(self.key, self.modifiers);
+        self.key = key;
+        self.modifiers = modifiers;
+
+        self
+    }
+
+    /// If CTRL is held down and we have KeyCode::Char(_) with the
+    /// ASCII control value encoded, decode it back to the ASCII
+    /// alpha keycode instead.
+    pub fn normalize_ctrl(mut self) -> Self {
+        let (key, modifiers) = normalize_ctrl(self.key, self.modifiers);
+        self.key = key;
+        self.modifiers = modifiers;
+
+        self
     }
 }

@@ -1,6 +1,6 @@
 use crate::action::Action;
 use crate::common::*;
-use crate::event::{Event, Event::*, KeyboardEvent};
+use crate::event::{Event, Event::*, KeyEvent};
 use crate::x11::Key;
 use crate::x11::*;
 
@@ -31,7 +31,7 @@ impl EventHandler {
     /// Use the prepared keycode and keysym mapping.
     pub fn on_event(&mut self, event: &Event) -> Result<Vec<Action>> {
         match event {
-            KeyboardEvent(keyboard_event) => {
+            KeyEvent(keyboard_event) => {
                 self.on_keyboard_event(keyboard_event);
             }
             OverrideTimeout => {}
@@ -39,11 +39,10 @@ impl EventHandler {
         Ok(self.actions.drain(..).collect())
     }
 
-    fn on_keyboard_event(&mut self, keyboard_event: &KeyboardEvent) {}
+    fn on_keyboard_event(&mut self, keyboard_event: &KeyEvent) {}
 
     pub fn update_modifiers(&mut self, modifiers: &[Key]) {
         // let modifier_state = self.keyboard.get_modifier_state();
-        let modifier_state = ModifierState::new(16);
     }
 
     fn send_action(&mut self, action: Action) {

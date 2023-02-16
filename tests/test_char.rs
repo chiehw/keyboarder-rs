@@ -1,6 +1,6 @@
 use keyboarder::{
-    event::{self, KeyCode, KeyEvent, KeyboardEvent},
-    x11::{Modifiers, XConnection, XSimulator},
+    event::{self, KeyCode, KeyEvent},
+    x11::{Modifiers, PhysKeyCode, XConnection, XSimulator},
 };
 /// 1
 /// a
@@ -33,20 +33,39 @@ fn test_char_keycode_with_modifier() {
     let mut simulator = XSimulator::new(&conn);
 
     // shift + & = 1 in French
-    simulator.simulate_keyboard_event(&KeyboardEvent {
-        key_event: KeyEvent {
-            key: KeyCode::RawCode(10),
-            press: true,
-            modifiers: Modifiers::SHIFT,
-        },
-        pressed_keys: vec![],
+    simulator.simulate_key_event(&KeyEvent {
+        key: KeyCode::RawCode(10),
+        press: true,
+        modifiers: Modifiers::SHIFT,
+        click: false,
     });
-    simulator.simulate_keyboard_event(&KeyboardEvent {
-        key_event: KeyEvent {
-            key: KeyCode::RawCode(10),
-            press: false,
-            modifiers: Modifiers::SHIFT,
-        },
-        pressed_keys: vec![],
+    simulator.simulate_key_event(&KeyEvent {
+        key: KeyCode::RawCode(10),
+        press: false,
+        modifiers: Modifiers::SHIFT,
+        click: false,
+    });
+}
+
+#[test]
+fn test_char_by_phys() {
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = XConnection::create_new().unwrap();
+    let mut simulator = XSimulator::new(&conn);
+
+    // shift + KeyQ = "Q" in French
+    // shift + KeyA = "A" in US
+    simulator.simulate_key_event(&KeyEvent {
+        key: KeyCode::Physical(PhysKeyCode::KeyQ),
+        press: true,
+        modifiers: Modifiers::SHIFT,
+        click: false,
+    });
+    simulator.simulate_key_event(&KeyEvent {
+        key: KeyCode::Physical(PhysKeyCode::KeyQ),
+        press: false,
+        modifiers: Modifiers::SHIFT,
+        click: false,
     });
 }

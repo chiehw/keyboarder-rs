@@ -1,6 +1,6 @@
 use event::*;
 use keyboarder::{
-    event::{self, KeyboardEvent},
+    event::{self},
     x11::{XConnection, XSimulator},
 };
 
@@ -8,7 +8,6 @@ use keyboarder::{
 /// ^
 #[test]
 fn test_deadkey_ampersand() {
-    env_logger::init();
     std::env::set_var("DISPLAY", ":0");
 
     let conn = XConnection::create_new().unwrap();

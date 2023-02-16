@@ -1,4 +1,4 @@
-use crate::event::{CodeState, KeyEvent};
+use crate::event::{CodeState, KeyCode, KeyEvent};
 use anyhow::{anyhow, ensure};
 use bitflags::*;
 use std::{
@@ -9,47 +9,9 @@ use std::{
 };
 
 use xkbcommon::xkb::{self};
-
-#[derive(Debug)]
-pub struct ModifierState {
-    shift: bool,
-    ctrl: bool,
-    alt: bool,
-    meta: bool,
-}
-
-impl ModifierState {
-    pub fn new(mask: u32) -> Self {
-        Self {
-            shift: mask & ShiftMask == ShiftMask,
-            ctrl: mask & ControlMask == ControlMask,
-            alt: mask & Mod1Mask == Mod1Mask,
-            meta: mask & Mod4Mask == Mod4Mask,
-        }
-    }
-}
-
-/// https://stackoverflow.com/questions/69656145/how-does-modifiersas-in-xmodmap-work-under-linux-operating-system
-/// Use xmodmap -pm to get meaning of modifier
-#[allow(non_upper_case_globals)]
-pub const ShiftMask: u32 = 1; // shift
-#[allow(non_upper_case_globals)]
-pub const LockMask: u32 = 2; // caps_lock
-#[allow(non_upper_case_globals)]
-pub const ControlMask: u32 = 4; // contrl
-#[allow(non_upper_case_globals)]
-pub const Mod1Mask: u32 = 8; // alt_l
-#[allow(non_upper_case_globals)]
-pub const Mod2Mask: u32 = 16; // num_lock
-#[allow(non_upper_case_globals)]
-pub const Mod3Mask: u32 = 32;
-#[allow(non_upper_case_globals)]
-pub const Mod4Mask: u32 = 64; // super_l
-#[allow(non_upper_case_globals)]
-pub const Mod5Mask: u32 = 128; // iso_level3_shift
+pub const MOD_NAME_ISO_LEVEL3_SHIFT: &str = "Mod5";
 
 /// https://github.com/fufesou/rdev/blob/cedc4e62744566775026af4b434ef799804c1130/src/rdev.rs#L112
-///
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Key {
     AltLeft,
@@ -315,6 +277,50 @@ pub fn query_lc_ctype() -> anyhow::Result<&'static OsStr> {
     Ok(OsStr::from_bytes(cstr.to_bytes()))
 }
 
+#[inline]
+pub fn level_to_modifiers(level: u32) -> Modifiers {
+    match level {
+        0 => Modifiers::NONE,
+        1 => Modifiers::SHIFT,
+        2 => Modifiers::ALT_GR,
+        3 => Modifiers::SHIFT | Modifiers::ALT_GR,
+        _ => Modifiers::NONE,
+    }
+}
+
+pub fn build_char_event_map(
+    keymap: &xkb::Keymap,
+    min_keycode: u32,
+    max_keycode: u32,
+    layout: u32,
+) -> HashMap<char, KeyEvent> {
+    let mut map: HashMap<char, KeyEvent> = HashMap::new();
+
+    // todo
+    for keycode in min_keycode..=max_keycode {
+        let num_level = keymap.num_levels_for_key(keycode, layout);
+        for level in 0..num_level {
+            let keysyms = keymap.key_get_syms_by_level(keycode, layout, level);
+            if keysyms.is_empty() {
+                continue;
+            }
+            let keysym = keysyms[0];
+            let char_u32 = xkb::keysym_to_utf32(keysym);
+            if let Some(chr) = char::from_u32(char_u32) {
+                let key_event = KeyEvent {
+                    key: KeyCode::RawCode(keycode),
+                    press: false,
+                    modifiers: level_to_modifiers(level),
+                    click: true,
+                };
+                map.insert(chr, key_event);
+            }
+        }
+    }
+
+    map
+}
+
 pub fn build_phys_keycode_map(
     keymap: &xkb::Keymap,
 ) -> (
@@ -452,7 +458,8 @@ pub fn build_phys_keycode_map(
 pub struct XKeyboard {
     phys_code_map: RefCell<HashMap<PhysKeyCode, xkb::Keycode>>,
     code_phys_map: RefCell<HashMap<xkb::Keycode, PhysKeyCode>>,
-    keysym_map: RefCell<HashMap<xkb::Keycode, xkb::Keycode>>,
+    keysym_map: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
+    char_event_map: RefCell<HashMap<char, KeyEvent>>,
     unused_keycodes: RefCell<Vec<xkb::Keycode>>,
     state: RefCell<xkb::State>,
     keymap: xkb::Keymap,
@@ -498,10 +505,14 @@ impl XKeyboard {
             }
         }
 
+        let char_event_map: HashMap<char, KeyEvent> =
+            build_char_event_map(&keymap, min_keycode, max_keycode, layout_index);
+
         Ok(Self {
             phys_code_map: RefCell::new(phys_code_map),
             code_phys_map: RefCell::new(code_phys_map),
             keysym_map: RefCell::new(keysym_map),
+            char_event_map: RefCell::new(char_event_map),
             unused_keycodes: RefCell::new(unused_keycodes),
             state: RefCell::new(state),
             keymap,
@@ -532,6 +543,10 @@ impl XKeyboard {
         }
         if self.mod_is_active(xkb::MOD_NAME_NUM) {
             res |= Modifiers::NUM;
+        }
+        // todo: check
+        if self.mod_is_active(MOD_NAME_ISO_LEVEL3_SHIFT) {
+            res |= Modifiers::ALT_GR;
         }
         res
     }
@@ -567,6 +582,15 @@ impl XKeyboard {
         }
     }
 
+    pub fn get_key_event_by_char(&self, chr: char) -> Option<KeyEvent> {
+        let char_map = self.char_event_map.borrow();
+        if !char_map.contains_key(&chr) {
+            None
+        } else {
+            char_map.get(&chr).clone().cloned()
+        }
+    }
+
     pub fn keysym_is_dead_key(&self, keysym: xkb::Keysym) -> bool {
         let name = xkb::keysym_get_name(keysym);
         dbg!(&name);
@@ -589,6 +613,8 @@ impl XKeyboard {
     }
 }
 
+/// https://stackoverflow.com/questions/69656145/how-does-modifiersas-in-xmodmap-work-under-linux-operating-system
+/// Use xmodmap -pm to get meaning of modifier
 bitflags! {
     #[derive(Default, Deserialize, Serialize)]
     pub struct Modifiers: u16 {
@@ -608,6 +634,8 @@ bitflags! {
 
         const CAPS = 1<<11;
         const NUM = 1<<12;
+
+        const ALT_GR = 1<<13;
     }
 }
 
@@ -657,13 +685,16 @@ impl ToString for Modifiers {
             (Self::SHIFT, "SHIFT"),
             (Self::ALT, "ALT"),
             (Self::CTRL, "CTRL"),
-            (Self::META, "Meta"),
+            (Self::META, "META"),
             (Self::LEFT_ALT, "LEFT_ALT"),
             (Self::RIGHT_ALT, "RIGHT_ALT"),
             (Self::LEFT_CTRL, "LEFT_CTRL"),
             (Self::RIGHT_CTRL, "RIGHT_CTRL"),
             (Self::LEFT_SHIFT, "LEFT_SHIFT"),
             (Self::RIGHT_SHIFT, "RIGHT_SHIFT"),
+            (Self::CAPS, "CAPS"),
+            (Self::NUM, "NUM"),
+            (Self::ALT_GR, "ALT_GR"),
         ] {
             if !self.contains(value) {
                 continue;
@@ -710,6 +741,7 @@ impl Modifiers {
             (Modifiers::META, PhysKeyCode::MetaLeft),
             (Modifiers::CAPS, PhysKeyCode::CapsLock),
             (Modifiers::NUM, PhysKeyCode::NumLock),
+            (Modifiers::ALT_GR, PhysKeyCode::AltRight),
         ] {
             let (modifier, phys) = pair.to_owned();
 
