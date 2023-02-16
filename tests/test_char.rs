@@ -20,6 +20,9 @@ fn test_char_keycode() {
     // & in French
     simulator.simulate_keycode(10, true);
     simulator.simulate_keycode(10, false);
+
+    simulator.simulate_char_without_modifiers('¹');
+    simulator.simulate_char_without_modifiers('¡');
 }
 
 /// # char + AltGr/Shift

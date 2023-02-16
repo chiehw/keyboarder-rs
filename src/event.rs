@@ -1,3 +1,4 @@
+use anyhow::Ok;
 use serde::{Deserialize, Serialize};
 
 use crate::platform_impl::{Key, Modifiers, PhysKeyCode};
@@ -51,7 +52,7 @@ impl From<bool> for State {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyEvent {
     /// Which key was pressed
     pub key: KeyCode,
@@ -71,6 +72,16 @@ impl Default for KeyEvent {
             click: false,
         }
     }
+}
+
+pub fn get_key_event_from_u8_vec(buff: &[u8]) -> anyhow::Result<KeyEvent> {
+    let key_event: KeyEvent = bincode::deserialize(buff)?;
+    Ok(key_event)
+}
+
+pub fn get_u8_vec_from_key_event(key_event: &KeyEvent) -> anyhow::Result<Vec<u8>> {
+    let buff: Vec<u8> = bincode::serialize(key_event)?;
+    Ok(buff)
 }
 
 impl KeyEvent {

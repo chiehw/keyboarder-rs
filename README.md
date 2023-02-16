@@ -11,5 +11,7 @@
 - [ ] Record && Replay
   - [ ] 
 - [ ] Network
-  - [ ] Serialize.
-  - [ ] Deserialize.
+  - [x] Serialize.
+  - [x] Deserialize.
+  - [ ] Server.
+  - [ ] Client.

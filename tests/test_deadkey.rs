@@ -1,6 +1,4 @@
-use keyboarder::{
-    platform_impl::{XConnection, XSimulator},
-};
+use keyboarder::platform_impl::{XConnection, XSimulator};
 
 /// â
 /// ^

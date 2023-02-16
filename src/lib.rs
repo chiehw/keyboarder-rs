@@ -4,3 +4,4 @@ pub mod common;
 pub mod event;
 pub mod event_handler;
 pub mod platform_impl;
+pub mod utils;

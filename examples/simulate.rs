@@ -5,10 +5,7 @@ fn main() -> anyhow::Result<()> {
     std::env::set_var("DISPLAY", ":0");
 
     let conn = XConnection::create_new()?;
-    let mut simulator = XSimulator::new(&conn);
-
-    simulator.simulate_char_without_modifiers('¹');
-    simulator.simulate_char_without_modifiers('¡');
+    let _simulator = XSimulator::new(&conn);
 
     // todo:
     // keyevent(keycode, char);
