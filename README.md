@@ -9,9 +9,12 @@
   - [x] by key_event.
 - [ ] Multiple input method: Auto update map.
 - [ ] Record && Replay
-  - [ ] 
 - [ ] Network
   - [x] Serialize.
   - [x] Deserialize.
   - [ ] Server.
   - [ ] Client.
+- [ ] Multiple Platform
+  - [x] Linux
+  - [ ] Windows
+  - [ ] MacOS

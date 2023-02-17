@@ -1,6 +1,6 @@
 use keyboarder::{
     event::{KeyCode, KeyEvent},
-    platform_impl::{Modifiers, PhysKeyCode},
+    types::{Modifiers, PhysKeyCode},
     utils::KeyEventFile,
 };
 
