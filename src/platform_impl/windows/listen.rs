@@ -1,13 +1,12 @@
+use crate::platform_impl::platform::common::listen_keyboard;
 use crate::types::Modifiers;
 
-use super::listen_keyboard;
-
-pub struct WListener {
+pub struct WinListener {
     pressed_modifiers: Modifiers,
 }
 
-impl WListener {
-    pub fn new() -> WListener {
+impl WinListener {
+    pub fn new() -> WinListener {
         Self::default()
     }
 
@@ -16,7 +15,7 @@ impl WListener {
     }
 }
 
-impl Default for WListener {
+impl Default for WinListener {
     fn default() -> Self {
         let pressed_modifiers = Modifiers::NONE;
         Self { pressed_modifiers }

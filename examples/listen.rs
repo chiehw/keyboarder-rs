@@ -1,6 +1,5 @@
 use std::ptr::null_mut;
-
-use keyboarder::platform_impl::WinKeyboard;
+use keyboarder::platform_impl::Keyboard;
 use winapi::um::winuser::{GetForegroundWindow, GetKeyboardLayout, GetWindowThreadProcessId};
 
 fn main() {
@@ -15,5 +14,5 @@ fn main() {
         let _hkl = GetKeyboardLayout(current_window_thread_id);
     }
 
-    WinKeyboard::new().get_current_modifiers();
+    Keyboard::new().get_current_modifiers();
 }
