@@ -1,5 +1,5 @@
 use crate::{
-    platform_impl::build_phys_keycode_map,
+    platform_impl::platform::keycodes::build_phys_keycode_map,
     types::{KeyCode, KeyEvent},
     types::{Modifiers, PhysKeyCode},
 };
@@ -10,7 +10,6 @@ use std::{
     os::unix::prelude::OsStrExt,
 };
 
-use serde::{Deserialize, Serialize};
 use xkbcommon::xkb::{self};
 
 pub const MOD_NAME_ISO_LEVEL3_SHIFT: &str = "Mod5";

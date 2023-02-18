@@ -515,4 +515,3 @@ fn normalize_ctrl(key: KeyCode, modifiers: Modifiers) -> (KeyCode, Modifiers) {
     }
     (key, modifiers)
 }
-

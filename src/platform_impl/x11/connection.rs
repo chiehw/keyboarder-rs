@@ -1,4 +1,4 @@
-use super::XKeyboard;
+use super::keyboard::XKeyboard;
 use anyhow::{anyhow, Context};
 use std::rc::Rc;
 

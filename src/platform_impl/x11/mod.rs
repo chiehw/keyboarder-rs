@@ -1,9 +1,8 @@
 pub mod connection;
-mod keyboard;
-mod keycodes;
-mod simulator;
+pub mod keyboard;
+pub mod keycodes;
+pub mod simulator;
 
 pub use connection::XConnection as Connection;
-pub use keyboard::*;
-pub use keycodes::*;
+pub use keyboard::XKeyboard as Keyboard;
 pub use simulator::XSimulator as Simulator;
