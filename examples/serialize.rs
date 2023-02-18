@@ -1,5 +1,5 @@
 use keyboarder::{
-    event::{KeyCode, KeyEvent},
+    types::{KeyCode, KeyEvent},
     types::{Modifiers, PhysKeyCode},
     utils::KeyEventFile,
 };

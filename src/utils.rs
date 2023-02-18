@@ -1,3 +1,4 @@
+use crate::types::{get_key_event_from_u8_vec, get_u8_vec_from_key_event, KeyEvent};
 use anyhow::{Context, Ok};
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -5,8 +6,6 @@ use std::fs;
 use std::io::Read;
 use std::time::SystemTime;
 use std::{fs::File, io::Write};
-
-use crate::event::{get_key_event_from_u8_vec, get_u8_vec_from_key_event, KeyEvent};
 
 pub struct KeyEventFile {
     file: File,

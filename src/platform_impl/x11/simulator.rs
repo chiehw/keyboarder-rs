@@ -1,6 +1,8 @@
-use crate::event::{DeadKeyStatus, KeyCode, KeyEvent};
+use super::connection::XConnection;
+use crate::types::{DeadKeyStatus, KeyCode, KeyEvent};
+use crate::Simulate;
 
-use super::{PhysKeyCode, XConnection};
+use crate::types::PhysKeyCode;
 use anyhow::{ensure, Context, Ok};
 use std::{
     cell::RefCell,
@@ -21,27 +23,14 @@ pub struct XSimulator {
     root: xcb::x::Window,
 }
 
-impl XSimulator {
-    pub fn new(conn: &Rc<XConnection>) -> Self {
-        let root = conn.root;
-        let device_id = conn.keyboard.device_id();
-
-        Self {
-            conn: Rc::downgrade(conn),
-            pressed_key: HashSet::new(),
-            root,
-            device_id,
-            dead_key_status: DeadKeyStatus::None,
-        }
-    }
-
-    pub fn simulate_keycode(&mut self, keycode: u32, press: bool) {
+impl Simulate for XSimulator {
+    fn simulate_keycode(&mut self, keycode: u32, press: bool) {
         if let Err(err) = self.process_keycode_event_impl(keycode, press) {
             log::error!("{err:#}")
         };
     }
 
-    pub fn simulate_keysym(&mut self, keysym: u32, press: bool) {
+    fn simulate_keysym(&mut self, keysym: u32, press: bool) {
         let keyboard = &self.conn().keyboard;
         if let Some(keycode) = keyboard.get_keycode_by_keysym(keysym) {
             self.simulate_keycode(keycode, press);
@@ -54,13 +43,13 @@ impl XSimulator {
         };
     }
 
-    pub fn simulate_char_without_modifiers(&mut self, chr: char) {
+    fn simulate_char_without_modifiers(&mut self, chr: char) {
         if let Err(err) = self.process_char_impl(chr) {
             log::error!("{err:#}")
         };
     }
 
-    pub fn simulate_phys(&mut self, phys: PhysKeyCode, press: bool) {
+    fn simulate_phys(&mut self, phys: PhysKeyCode, press: bool) {
         let keyboard = &self.conn().keyboard;
         if let Some(keycode) = keyboard.get_keycode_by_phys(phys) {
             dbg!(keycode);
@@ -74,10 +63,25 @@ impl XSimulator {
         };
     }
 
-    pub fn simulate_key_event(&mut self, key_event: &KeyEvent) {
+    fn simulate_key_event(&mut self, key_event: &KeyEvent) {
         if let Err(err) = self.process_key_event_impl(key_event) {
             log::error!("{err:#}")
         };
+    }
+}
+
+impl XSimulator {
+    pub fn new(conn: &Rc<XConnection>) -> Self {
+        let root = conn.root;
+        let device_id = conn.keyboard.device_id();
+
+        Self {
+            conn: Rc::downgrade(conn),
+            pressed_key: HashSet::new(),
+            root,
+            device_id,
+            dead_key_status: DeadKeyStatus::None,
+        }
     }
 
     /// restore_flag is used to restore the keyboard state.

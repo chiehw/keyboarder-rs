@@ -1,7 +1,7 @@
-use event::*;
 use keyboarder::{
-    event::{self},
-    platform_impl::{Modifiers, XConnection, XSimulator},
+    platform_impl::{Connection, Simulator},
+    types::{KeyCode, KeyEvent, Modifiers},
+    Simulate,
 };
 
 // / # shortcut
@@ -12,8 +12,8 @@ use keyboarder::{
 fn test_shortcut() {
     std::env::set_var("DISPLAY", ":0");
 
-    let conn = XConnection::create_new().unwrap();
-    let mut simulator = XSimulator::new(&conn);
+    let conn = Connection::create_new().unwrap();
+    let mut simulator = Simulator::new(&conn);
     // shift + delete = 1 in French
     simulator.simulate_key_event(&KeyEvent {
         key: KeyCode::KeySym(49),

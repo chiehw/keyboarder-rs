@@ -1,4 +1,8 @@
-use crate::event::{KeyCode, KeyEvent};
+use crate::{
+    platform_impl::build_phys_keycode_map,
+    types::{KeyCode, KeyEvent},
+    types::{Modifiers, PhysKeyCode},
+};
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -6,7 +10,6 @@ use std::{
     os::unix::prelude::OsStrExt,
 };
 
-use super::scancode_from_key;
 use serde::{Deserialize, Serialize};
 use xkbcommon::xkb::{self};
 

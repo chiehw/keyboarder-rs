@@ -1,4 +1,7 @@
-use keyboarder::platform_impl::{XConnection, XSimulator};
+use keyboarder::{
+    platform_impl::{Connection, Simulator},
+    Simulate,
+};
 
 /// â
 /// ^
@@ -6,9 +9,9 @@ use keyboarder::platform_impl::{XConnection, XSimulator};
 fn test_deadkey_ampersand() {
     std::env::set_var("DISPLAY", ":0");
 
-    let conn = XConnection::create_new().unwrap();
+    let conn = Connection::create_new().unwrap();
 
-    let mut simulator = XSimulator::new(&conn);
+    let mut simulator = Simulator::new(&conn);
 
     // dead_circumflex(^) in French
     simulator.simulate_keysym(65106, true); // &

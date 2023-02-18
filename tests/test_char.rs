@@ -1,6 +1,7 @@
 use keyboarder::{
-    event::{KeyCode, KeyEvent},
-    platform_impl::{Modifiers, PhysKeyCode, XConnection, XSimulator},
+    platform_impl::{Connection, Simulator},
+    types::{KeyCode, KeyEvent, Modifiers, PhysKeyCode},
+    Simulate,
 };
 /// 1
 /// a
@@ -9,9 +10,9 @@ use keyboarder::{
 fn test_char_keycode() {
     std::env::set_var("DISPLAY", ":0");
 
-    let conn = XConnection::create_new().unwrap();
+    let conn = Connection::create_new().unwrap();
 
-    let mut simulator = XSimulator::new(&conn);
+    let mut simulator = Simulator::new(&conn);
 
     // & in French, 1 in US
     simulator.simulate_keycode(10, true);
@@ -32,8 +33,8 @@ fn test_char_keycode() {
 fn test_char_keycode_with_modifier() {
     std::env::set_var("DISPLAY", ":0");
 
-    let conn = XConnection::create_new().unwrap();
-    let mut simulator = XSimulator::new(&conn);
+    let conn = Connection::create_new().unwrap();
+    let mut simulator = Simulator::new(&conn);
 
     // shift + & = 1 in French
     simulator.simulate_key_event(&KeyEvent {
@@ -54,8 +55,8 @@ fn test_char_keycode_with_modifier() {
 fn test_char_by_phys() {
     std::env::set_var("DISPLAY", ":0");
 
-    let conn = XConnection::create_new().unwrap();
-    let mut simulator = XSimulator::new(&conn);
+    let conn = Connection::create_new().unwrap();
+    let mut simulator = Simulator::new(&conn);
 
     // shift + KeyQ = "Q" in French
     // shift + KeyA = "A" in US
