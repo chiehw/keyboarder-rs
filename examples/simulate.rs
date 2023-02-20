@@ -7,6 +7,8 @@ fn main() -> anyhow::Result<()> {
     let conn = Connection::create_new()?;
     let _simulator = Simulator::new(&conn);
 
+    conn.run_message_loop()?;
+
     // todo:
     // keyevent(keycode, char);
     // test char event map

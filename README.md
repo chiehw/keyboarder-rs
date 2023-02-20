@@ -7,6 +7,8 @@
   - [x] by keysym.
   - [x] by char.
   - [x] by key_event.
+- [ ] Optimization
+  - [ ] Auto update char map when changing input method.
 - [ ] Multiple input method: Auto update map.
 - [ ] Record && Replay
 - [ ] Network

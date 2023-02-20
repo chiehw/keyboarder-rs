@@ -181,7 +181,7 @@ impl TryFrom<String> for Modifiers {
                 mods |= Modifiers::CTRL;
             } else if ele == "Meta" {
                 mods |= Modifiers::META;
-            } else if ele == "NONE" || ele == "" {
+            } else if ele == "NONE" || ele.is_empty() {
                 mods |= Modifiers::NONE;
             } else {
                 return Err(format!("invalid modifier name {} in {}", ele, s));
@@ -514,4 +514,46 @@ fn normalize_ctrl(key: KeyCode, modifiers: Modifiers) -> (KeyCode, Modifiers) {
         }
     }
     (key, modifiers)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GroupIndex {
+    N1,
+    N2,
+    N3,
+    N4,
+}
+
+impl From<u32> for GroupIndex {
+    fn from(group_id: u32) -> Self {
+        match group_id {
+            0 => Self::N1,
+            1 => Self::N2,
+            2 => Self::N3,
+            3 => Self::N4,
+            _ => Self::N4,
+        }
+    }
+}
+
+impl From<GroupIndex> for u32 {
+    fn from(group_index: GroupIndex) -> Self {
+        match group_index {
+            GroupIndex::N1 => 0,
+            GroupIndex::N2 => 1,
+            GroupIndex::N3 => 2,
+            GroupIndex::N4 => 3,
+        }
+    }
+}
+
+impl From<xcb::xkb::Group> for GroupIndex {
+    fn from(group: xcb::xkb::Group) -> Self {
+        match group {
+            xcb::xkb::Group::N1 => Self::N1,
+            xcb::xkb::Group::N2 => Self::N2,
+            xcb::xkb::Group::N3 => Self::N3,
+            xcb::xkb::Group::N4 => Self::N4,
+        }
+    }
 }

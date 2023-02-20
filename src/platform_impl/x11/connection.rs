@@ -63,6 +63,7 @@ impl XConnection {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn send_and_wait_request<R>(
         &self,
         req: &R,
@@ -77,7 +78,35 @@ impl XConnection {
             .with_context(|| format!("{req:#?}"))
     }
 
-    fn process_key_event(&self, _keycode: u8, _press: bool) -> anyhow::Result<()> {
-        anyhow::Ok(())
+    pub fn run_message_loop(&self) -> anyhow::Result<()> {
+        loop {
+            let _event = match self.conn().wait_for_event() {
+                Err(xcb::Error::Connection(err)) => {
+                    panic!("unexpected I/O error: {}", err);
+                }
+                Err(xcb::Error::Protocol(xcb::ProtocolError::X(
+                    xcb::x::Error::Font(_err),
+                    _req_name,
+                ))) => {
+                    // may be this particular error is fine?
+                    continue;
+                }
+                Err(xcb::Error::Protocol(err)) => {
+                    panic!("unexpected protocol error: {:#?}", err);
+                }
+                Ok(event) => self.process_xcb_event(&event),
+            };
+        }
+    }
+
+    // key press/release are not processed here.
+    // xkbcommon depends on those events in order to:
+    //    - update modifiers state
+    //    - update keymap/state on keyboard changes
+    fn process_xcb_event(&self, event: &xcb::Event) -> anyhow::Result<()> {
+        if matches!(event, xcb::Event::Xkb(_)) {
+            self.keyboard.process_xkb_event(&self.conn, event)?;
+        }
+        Ok(())
     }
 }

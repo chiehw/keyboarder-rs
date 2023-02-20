@@ -73,7 +73,7 @@ impl Simulate for XSimulator {
 impl XSimulator {
     pub fn new(conn: &Rc<XConnection>) -> Self {
         let root = conn.root;
-        let device_id = conn.keyboard.device_id();
+        let device_id = conn.keyboard.get_device_id();
 
         Self {
             conn: Rc::downgrade(conn),
