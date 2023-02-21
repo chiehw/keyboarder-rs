@@ -1,16 +1,21 @@
+use crate::{
+    connection::ConnectionOps, platform_impl::Simulator, simulate::Simulate, types::SimulateEvent,
+};
+
 use super::keyboard::XKeyboard;
 use anyhow::{anyhow, Context};
-use std::rc::Rc;
+use std::cell::RefCell;
 
 pub struct XConnection {
     pub conn: xcb::Connection,
     pub screen_num: i32,
     pub root: xcb::x::Window,
     pub keyboard: XKeyboard,
+    pub simulator: RefCell<Option<Simulator>>,
 }
 
 impl XConnection {
-    pub fn create_new() -> anyhow::Result<Rc<XConnection>> {
+    pub fn create_new() -> anyhow::Result<XConnection> {
         let (conn, screen_num) =
             xcb::Connection::connect_with_xlib_display_and_extensions(&[xcb::Extension::Xkb], &[])?;
         let screen = conn
@@ -22,12 +27,13 @@ impl XConnection {
 
         let keyboard = XKeyboard::new(&conn)?;
 
-        let conn = Rc::new(XConnection {
+        let conn = XConnection {
             conn,
             screen_num,
             root,
             keyboard,
-        });
+            simulator: RefCell::new(None),
+        };
 
         anyhow::Ok(conn)
     }
@@ -99,6 +105,14 @@ impl XConnection {
         }
     }
 
+    pub fn process_simulate_event(&self, sim_event: SimulateEvent) -> anyhow::Result<()> {
+        if let Some(simulator) = self.simulator.borrow_mut().as_mut() {
+            simulator.simulate_event(sim_event);
+        }
+
+        Ok(())
+    }
+
     // key press/release are not processed here.
     // xkbcommon depends on those events in order to:
     //    - update modifiers state
@@ -110,3 +124,5 @@ impl XConnection {
         Ok(())
     }
 }
+
+impl ConnectionOps for XConnection {}

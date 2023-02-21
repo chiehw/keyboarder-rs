@@ -17,4 +17,6 @@
 //     Keyboard::new().get_current_modifiers();
 // }
 
-fn main() {}
+fn main() -> anyhow::Result<()> {
+    Ok(())
+}

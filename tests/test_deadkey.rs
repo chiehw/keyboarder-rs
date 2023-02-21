@@ -1,6 +1,7 @@
 use keyboarder::{
+    connection::ConnectionOps,
     platform_impl::{Connection, Simulator},
-    Simulate,
+    simulate::Simulate,
 };
 
 /// â
@@ -9,7 +10,7 @@ use keyboarder::{
 fn test_deadkey_ampersand() {
     std::env::set_var("DISPLAY", ":0");
 
-    let conn = Connection::create_new().unwrap();
+    let conn = Connection::init().unwrap();
 
     let mut simulator = Simulator::new(&conn);
 

@@ -557,3 +557,22 @@ impl From<xcb::xkb::Group> for GroupIndex {
         }
     }
 }
+
+pub enum Event {
+    /// Called to handle a key event.
+    KeyEvent(KeyEvent),
+    XCBEvent(xcb::Event),
+}
+
+#[derive(Debug, Clone)]
+pub enum SimulateEvent {
+    KeyCodeEvent(KeyCodeEvent),
+    CharNoModifi(char),
+    KeyEvent(KeyEvent),
+}
+
+#[derive(Debug, Clone)]
+pub struct KeyCodeEvent {
+    pub keycode: KeyCode,
+    pub press: bool,
+}

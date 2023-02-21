@@ -1,7 +1,8 @@
 use keyboarder::{
+    connection::ConnectionOps,
     platform_impl::{Connection, Simulator},
+    simulate::Simulate,
     types::{KeyCode, KeyEvent, Modifiers},
-    Simulate,
 };
 
 // / # shortcut
@@ -12,7 +13,7 @@ use keyboarder::{
 fn test_shortcut() {
     std::env::set_var("DISPLAY", ":0");
 
-    let conn = Connection::create_new().unwrap();
+    let conn = Connection::init().unwrap();
     let mut simulator = Simulator::new(&conn);
     // shift + delete = 1 in French
     simulator.simulate_key_event(&KeyEvent {

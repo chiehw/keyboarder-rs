@@ -1,16 +1,15 @@
 use super::connection::XConnection;
-use crate::types::{DeadKeyStatus, KeyCode, KeyEvent};
-use crate::Simulate;
+
+use crate::simulate::Simulate;
+use crate::types::{DeadKeyStatus, KeyCode, KeyEvent, SimulateEvent};
 
 use crate::types::PhysKeyCode;
 use anyhow::{ensure, Context, Ok};
+
 use std::{
-    cell::RefCell,
     collections::HashSet,
     rc::{Rc, Weak},
 };
-use xkb::compose::Status as ComposeStatus;
-use xkbcommon::xkb;
 
 const XCB_KEY_PRESS: u8 = 2;
 const XCB_KEY_RELEASE: u8 = 3;
@@ -68,6 +67,32 @@ impl Simulate for XSimulator {
             log::error!("{err:#}")
         };
     }
+
+    fn simulate_event(&mut self, sim_event: crate::types::SimulateEvent) {
+        match sim_event {
+            SimulateEvent::KeyCodeEvent(keycode_event) => {
+                let press = keycode_event.press;
+                match keycode_event.keycode {
+                    KeyCode::RawCode(keycode) => {
+                        self.simulate_keycode(keycode, press);
+                    }
+                    KeyCode::Physical(phys) => {
+                        self.simulate_phys(phys, press);
+                    }
+                    KeyCode::KeySym(keysym) => {
+                        self.simulate_keysym(keysym, press);
+                    }
+                    _ => {}
+                }
+            }
+            SimulateEvent::KeyEvent(key_event) => {
+                self.simulate_key_event(&key_event);
+            }
+            SimulateEvent::CharNoModifi(chr) => {
+                self.simulate_char_without_modifiers(chr);
+            }
+        }
+    }
 }
 
 impl XSimulator {
@@ -75,7 +100,7 @@ impl XSimulator {
         let root = conn.root;
         let device_id = conn.keyboard.get_device_id();
 
-        Self {
+        XSimulator {
             conn: Rc::downgrade(conn),
             pressed_key: HashSet::new(),
             root,
@@ -209,29 +234,5 @@ impl XSimulator {
 impl Drop for XSimulator {
     fn drop(&mut self) {
         self.release_pressed_keys();
-    }
-}
-
-struct Compose {
-    state: xkb::compose::State,
-    composition: String,
-}
-
-impl Compose {
-    fn reset(&mut self) {
-        self.composition.clear();
-        self.state.reset();
-    }
-
-    fn feed(&mut self, _xcode: xkb::Keycode, xsym: xkb::Keysym, _keystate: &RefCell<xkb::State>) {
-        if matches!(
-            self.state.status(),
-            ComposeStatus::Nothing | ComposeStatus::Cancelled | ComposeStatus::Composed
-        ) {
-            self.composition.clear();
-        }
-
-        let _previously_composing = !self.composition.is_empty();
-        self.state.feed(xsym);
     }
 }
