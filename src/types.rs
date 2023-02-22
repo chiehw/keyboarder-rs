@@ -349,16 +349,33 @@ impl KeyEvent {
 
         self
     }
+
+    pub fn to_u8_vec(&self) -> anyhow::Result<Vec<u8>> {
+        let buff: Vec<u8> = bincode::serialize(self)?;
+        Ok(buff)
+    }
 }
 
-pub fn get_key_event_from_u8_vec(buff: &[u8]) -> anyhow::Result<KeyEvent> {
-    let key_event: KeyEvent = bincode::deserialize(buff)?;
-    Ok(key_event)
+pub struct KeyEventBin(Vec<u8>);
+
+impl KeyEventBin {
+    pub fn new(buf: Vec<u8>) -> Self {
+        Self(buf)
+    }
+    pub fn to_key_event(&self) -> anyhow::Result<KeyEvent> {
+        let key_event: KeyEvent = bincode::deserialize(&self.0)?;
+        Ok(key_event)
+    }
 }
 
-pub fn get_u8_vec_from_key_event(key_event: &KeyEvent) -> anyhow::Result<Vec<u8>> {
-    let buff: Vec<u8> = bincode::serialize(key_event)?;
-    Ok(buff)
+impl From<KeyEvent> for KeyEventBin {
+    fn from(key_event: KeyEvent) -> Self {
+        if let Ok(buff) = key_event.to_u8_vec() {
+            KeyEventBin(buff)
+        } else {
+            KeyEventBin(vec![])
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

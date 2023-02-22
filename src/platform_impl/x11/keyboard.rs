@@ -317,7 +317,7 @@ impl XKeyboard {
         connection: &xcb::Connection,
         event: &xcb::Event,
     ) -> anyhow::Result<()> {
-        log::info!("{:?}", event);
+        log::trace!("{:?}", event);
 
         match event {
             xcb::Event::Xkb(xcb::xkb::Event::StateNotify(ev)) => {

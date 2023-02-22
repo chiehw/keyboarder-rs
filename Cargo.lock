@@ -482,6 +482,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
+ "mio",
  "native-windows-derive",
  "native-windows-gui",
  "nix",

@@ -2,46 +2,53 @@ use crate::types::{KeyEvent, PhysKeyCode, SimulateEvent};
 use crate::{connection, platform_impl::Connection};
 use anyhow::Context;
 use connection::ConnectionOps;
-// use crossbeam::{channel, select};
-use std::borrow::Borrow;
-use std::cell::RefCell;
-use std::sync::mpsc;
+use filedescriptor::{FileDescriptor, Pipe};
+use std::io::Write;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread::JoinHandle;
 
-thread_local! {
-    static SENDER: RefCell<Option<mpsc::Sender<SimulateEvent>>> = RefCell::new(None);
-    pub static RECIVER: RefCell<Option<mpsc::Receiver<SimulateEvent>>> = RefCell::new(None);
+lazy_static::lazy_static! {
+    pub static ref  SENDER: Arc<Mutex<Option<FileDescriptor>>> = Default::default();
 }
 
 pub trait Simulate {
     fn spawn_server() -> anyhow::Result<JoinHandle<()>> {
-        let (sender, reciver) = mpsc::channel();
-        SENDER.with(|m| *m.borrow_mut() = Some(sender));
+        let pipe = Pipe::new()?;
 
-        Ok(std::thread::spawn(move || {
-            let conn = Connection::with_simulator()
-                .context("Failed to init Connection")
-                .unwrap();
+        let mut write_fd = pipe.write;
+        let mut read_fd = pipe.read;
 
-            loop {
-                if let Ok(sim_event) = reciver.recv() {
-                    conn.process_simulate_event(sim_event)
-                        .map_err(|err| log::error!("simulate error: {:?}", err))
-                        .ok();
-                }
-            }
-        }))
+        write_fd.set_non_blocking(true)?;
+        read_fd.set_non_blocking(true)?;
+
+        SENDER.lock().unwrap().replace(write_fd);
+
+        Ok({
+            std::thread::spawn(move || {
+                let conn = Connection::with_simulator()
+                    .context("Failed to init Connection")
+                    .unwrap();
+
+                if let Err(err) = conn.run_message_loop(&mut read_fd) {
+                    log::error!("Failed to process message: {:?}", err);
+                };
+            })
+        })
     }
 
-    fn simulate_event_to_server(sim_event: SimulateEvent) -> anyhow::Result<()> {
-        SENDER.with(|sender| {
-            if let Some(sender) = &(*sender.borrow()) {
-                sender
-                    .send(sim_event)
-                    .map_err(|err| log::error!("simulate error: {:?}", err))
-                    .ok();
+    fn event_to_server(key_event: &KeyEvent) -> anyhow::Result<()> {
+        let mut binding = SENDER.lock().unwrap();
+        let sender = binding.as_mut();
+
+        if let Some(sender) = sender {
+            let buf = key_event.to_u8_vec()?;
+            let size = sender.write(&buf)?;
+            if size != buf.len() {
+                log::error!("Can't write key event");
             }
-        });
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
 
         Ok(())
     }

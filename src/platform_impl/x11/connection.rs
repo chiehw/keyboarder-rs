@@ -1,10 +1,15 @@
 use crate::{
-    connection::ConnectionOps, platform_impl::Simulator, simulate::Simulate, types::SimulateEvent,
+    connection::ConnectionOps,
+    platform_impl::Simulator,
+    simulate::Simulate,
+    types::{KeyEvent, KeyEventBin},
 };
 
 use super::keyboard::XKeyboard;
 use anyhow::{anyhow, Context};
-use std::cell::RefCell;
+use filedescriptor::FileDescriptor;
+use mio::{unix::SourceFd, Events, Interest, Poll, Token};
+use std::{cell::RefCell, io::Read, os::unix::prelude::AsRawFd};
 
 pub struct XConnection {
     pub conn: xcb::Connection,
@@ -84,42 +89,79 @@ impl XConnection {
             .with_context(|| format!("{req:#?}"))
     }
 
-    pub fn run_message_loop(&self) -> anyhow::Result<()> {
+    pub fn run_message_loop(&self, read_fd: &mut FileDescriptor) -> anyhow::Result<()> {
+        const TOK_SIMULATE: mio::Token = Token(0xffff_fffc);
+        const TOK_XKB: mio::Token = Token(0xffff_fffb);
+        let mut poll = Poll::new()?;
+        let mut events = Events::with_capacity(8);
+
+        poll.registry().register(
+            &mut SourceFd(&read_fd.as_raw_fd()),
+            TOK_SIMULATE,
+            Interest::READABLE,
+        )?;
+        poll.registry().register(
+            &mut SourceFd(&self.conn.as_raw_fd()),
+            TOK_XKB,
+            Interest::READABLE,
+        )?;
+
         loop {
-            let _event = match self.conn().wait_for_event() {
-                Err(xcb::Error::Connection(err)) => {
-                    panic!("unexpected I/O error: {}", err);
+            poll.poll(&mut events, None)
+                .map_err(|err| anyhow::anyhow!("polling for events: {:?}", err))?;
+            for event in &events {
+                match event.token() {
+                    TOK_SIMULATE => {
+                        let mut buf = vec![0; 64];
+                        #[allow(clippy::unused_io_amount)]
+                        let num = read_fd.read(&mut buf)?;
+                        anyhow::ensure!(num != buf.len(), "buf is too small");
+
+                        let key_event = KeyEventBin::new(buf).to_key_event()?;
+                        self.process_key_event_log(&key_event);
+                    }
+                    TOK_XKB => {
+                        self.process_queued_xcb_log();
+                    }
+                    _ => {}
                 }
-                Err(xcb::Error::Protocol(xcb::ProtocolError::X(
-                    xcb::x::Error::Font(_err),
-                    _req_name,
-                ))) => {
-                    // may be this particular error is fine?
-                    continue;
-                }
-                Err(xcb::Error::Protocol(err)) => {
-                    panic!("unexpected protocol error: {:#?}", err);
-                }
-                Ok(event) => self.process_xcb_event(&event),
-            };
+            }
         }
     }
 
-    pub fn process_simulate_event(&self, sim_event: SimulateEvent) -> anyhow::Result<()> {
+    fn process_key_event_log(&self, key_event: &KeyEvent) {
+        if let Err(err) = self.process_key_event(key_event) {
+            log::error!("{err:#}");
+        }
+    }
+
+    fn process_queued_xcb_log(&self) {
+        if let Err(err) = self.process_queued_xcb() {
+            log::error!("{err:#}");
+        }
+    }
+
+    fn process_key_event(&self, key_event: &KeyEvent) -> anyhow::Result<()> {
         if let Some(simulator) = self.simulator.borrow_mut().as_mut() {
-            simulator.simulate_event(sim_event);
+            simulator.simulate_key_event(key_event);
         }
 
         Ok(())
     }
 
-    // key press/release are not processed here.
-    // xkbcommon depends on those events in order to:
-    //    - update modifiers state
-    //    - update keymap/state on keyboard changes
-    fn process_xcb_event(&self, event: &xcb::Event) -> anyhow::Result<()> {
-        if matches!(event, xcb::Event::Xkb(_)) {
-            self.keyboard.process_xkb_event(&self.conn, event)?;
+    fn process_queued_xcb(&self) -> anyhow::Result<()> {
+        if let Some(event) = self
+            .conn
+            .poll_for_event()
+            .context("X11 connection is broken")?
+        {
+            // key press/release are not processed here.
+            // xkbcommon depends on those events in order to:
+            //    - update modifiers state
+            //    - update keymap/state on keyboard changes
+            if matches!(event, xcb::Event::Xkb(_)) {
+                self.keyboard.process_xkb_event(&self.conn, &event)?;
+            }
         }
         Ok(())
     }

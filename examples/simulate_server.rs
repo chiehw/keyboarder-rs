@@ -1,18 +1,22 @@
-use keyboarder::{platform_impl::Simulator, simulate::Simulate, types::SimulateEvent};
+use keyboarder::{
+    platform_impl::Simulator,
+    simulate::Simulate,
+    types::{KeyCode, KeyEvent, Modifiers, PhysKeyCode},
+};
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     std::env::set_var("DISPLAY", ":0");
 
+    let key_event = KeyEvent {
+        key: KeyCode::Physical(PhysKeyCode::KeyQ),
+        press: true,
+        modifiers: Modifiers::SHIFT,
+        click: false,
+    };
+
     let handle = Simulator::spawn_server()?;
-    Simulator::simulate_event_to_server(SimulateEvent::CharNoModifi('a'))?;
-
-    // if let Err(err) = conn.run_message_loop() {
-    //     log::error!("Failed to process xcb event: {:?}", err);
-    // };
-
-    // todo:
-    // update keymap.
+    Simulator::event_to_server(&key_event)?;
 
     handle.join().unwrap();
 
