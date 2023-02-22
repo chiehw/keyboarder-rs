@@ -1,5 +1,5 @@
 use crate::platform_impl::platform::connection::WinConnection;
-use crate::Simulate;
+use crate::simulate::{self, Simulate};
 use std::rc::Rc;
 
 pub struct WinSimulator {}
@@ -11,6 +11,14 @@ impl WinSimulator {
 }
 
 impl Simulate for WinSimulator {
+    fn spawn_server() -> anyhow::Result<std::thread::JoinHandle<()>> {
+        todo!()
+    }
+
+    fn event_to_server(key_event: &crate::types::KeyEvent) -> anyhow::Result<()> {
+        todo!()
+    }
+
     fn simulate_keycode(&mut self, _keycode: u32, _press: bool) {
         todo!()
     }
@@ -28,6 +36,10 @@ impl Simulate for WinSimulator {
     }
 
     fn simulate_key_event(&mut self, _key_event: &crate::types::KeyEvent) {
+        todo!()
+    }
+
+    fn simulate_event(&mut self, sim_event: crate::types::SimulateEvent) {
         todo!()
     }
 }

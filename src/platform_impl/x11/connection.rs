@@ -157,7 +157,17 @@ impl XConnection {
     }
 }
 
-impl ConnectionOps for XConnection {}
+impl ConnectionOps for XConnection {
+    fn with_simulator() -> anyhow::Result<Rc<WinConnection>> {
+        let conn = Rc::new(Connection::create_new()?);
+        CONN.with(|m| *m.borrow_mut() = Some(Rc::clone(&conn)));
+
+        let simulator = Simulator::new(&conn);
+        conn.simulator.borrow_mut().replace(simulator);
+
+        Ok(conn)
+    }
+}
 
 impl std::ops::Deref for XConnection {
     type Target = xcb::Connection;

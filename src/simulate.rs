@@ -13,45 +13,9 @@ lazy_static::lazy_static! {
 }
 
 pub trait Simulate {
-    fn spawn_server() -> anyhow::Result<JoinHandle<()>> {
-        let pipe = Pipe::new()?;
+    fn spawn_server() -> anyhow::Result<JoinHandle<()>>;
 
-        let mut write_fd = pipe.write;
-        let mut read_fd = pipe.read;
-
-        write_fd.set_non_blocking(true)?;
-        read_fd.set_non_blocking(true)?;
-
-        SENDER.lock().unwrap().replace(write_fd);
-
-        Ok({
-            std::thread::spawn(move || {
-                let conn = Connection::with_simulator()
-                    .context("Failed to init Connection")
-                    .unwrap();
-
-                if let Err(err) = conn.run_message_loop(&mut read_fd) {
-                    log::error!("Failed to process message: {:?}", err);
-                };
-            })
-        })
-    }
-
-    fn event_to_server(key_event: &KeyEvent) -> anyhow::Result<()> {
-        let mut binding = SENDER.lock().unwrap();
-        let sender = binding.as_mut();
-
-        if let Some(sender) = sender {
-            let buf = key_event.to_u8_vec()?;
-            let size = sender.write(&buf)?;
-            if size != buf.len() {
-                log::error!("Can't write key event");
-            }
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-
-        Ok(())
-    }
+    fn event_to_server(key_event: &KeyEvent) -> anyhow::Result<()>;
 
     fn simulate_event(&mut self, sim_event: SimulateEvent);
 

@@ -317,4 +317,25 @@ impl WinKeyboard {
     fn is_pressed(states: &[u8], vk_code: i32) -> bool {
         (states[vk_code as usize] & 0x80) != 0
     }
+
+    pub fn is_dead_key_leader(&mut self, mods: Modifiers, vk: u32) -> Option<char> {
+        unsafe {
+            self.update();
+        }
+        if vk <= u8::MAX.into() {
+            self.dead_keys
+                .get(&(Self::fixup_mods(mods), vk as u8))
+                .map(|dead| dead.dead_char)
+        } else {
+            None
+        }
+    }
+
+    fn fixup_mods(mods: Modifiers) -> Modifiers {
+        mods - (Modifiers::LEFT_SHIFT
+            | Modifiers::RIGHT_SHIFT
+            | Modifiers::LEFT_CTRL
+            | Modifiers::RIGHT_CTRL
+            | Modifiers::LEFT_ALT)
+    }
 }

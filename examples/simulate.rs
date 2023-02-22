@@ -1,7 +1,4 @@
-use keyboarder::{
-    connection::ConnectionOps,
-    platform_impl::{Connection, Simulator},
-};
+use keyboarder::{connection::ConnectionOps, platform_impl::{Simulator, Connection}};
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
