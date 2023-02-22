@@ -51,7 +51,6 @@ impl Simulate for XSimulator {
     fn simulate_phys(&mut self, phys: PhysKeyCode, press: bool) {
         let keyboard = &self.conn().keyboard;
         if let Some(keycode) = keyboard.get_keycode_by_phys(phys) {
-            dbg!(keycode);
             self.simulate_keycode(keycode, press);
         } else {
             log::error!(

@@ -168,25 +168,28 @@ impl TryFrom<String> for Modifiers {
     fn try_from(s: String) -> Result<Modifiers, String> {
         let mut mods = Modifiers::NONE;
 
-        for ele in s.split('|') {
-            // Allow for whitespace; debug printing Modifiers includes spaces
-            // around the `|` so it is desirable to be able to reverse that
-            // encoding here.
-            let element = ele.trim();
-            if element == "SHIFT" {
-                mods |= Modifiers::SHIFT;
-            } else if element == "ALT" {
-                mods |= Modifiers::ALT;
-            } else if ele == "CTRL" {
-                mods |= Modifiers::CTRL;
-            } else if ele == "Meta" {
-                mods |= Modifiers::META;
-            } else if ele == "NONE" || ele.is_empty() {
-                mods |= Modifiers::NONE;
-            } else {
-                return Err(format!("invalid modifier name {} in {}", ele, s));
+        let modifier_vec: Vec<_> = s.split('|').map(|ele| ele.trim()).collect();
+        for (value, label) in [
+            (Self::NONE, "NONE"),
+            (Self::SHIFT, "SHIFT"),
+            (Self::ALT, "ALT"),
+            (Self::CTRL, "CTRL"),
+            (Self::META, "META"),
+            (Self::LEFT_ALT, "LEFT_ALT"),
+            (Self::RIGHT_ALT, "RIGHT_ALT"),
+            (Self::LEFT_CTRL, "LEFT_CTRL"),
+            (Self::RIGHT_CTRL, "RIGHT_CTRL"),
+            (Self::LEFT_SHIFT, "LEFT_SHIFT"),
+            (Self::RIGHT_SHIFT, "RIGHT_SHIFT"),
+            (Self::CAPS, "CAPS"),
+            (Self::NUM, "NUM"),
+            (Self::ALT_GR, "ALT_GR"),
+        ] {
+            if modifier_vec.contains(&label) {
+                mods |= value;
             }
         }
+
         Ok(mods)
     }
 }

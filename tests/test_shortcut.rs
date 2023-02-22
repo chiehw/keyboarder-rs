@@ -22,6 +22,7 @@ fn test_shortcut() {
         modifiers: Modifiers::SHIFT,
         click: false,
     });
+
     simulator.simulate_key_event(&KeyEvent {
         key: KeyCode::KeySym(49),
         press: false,

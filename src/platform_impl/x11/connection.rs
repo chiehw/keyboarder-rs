@@ -46,49 +46,6 @@ impl XConnection {
     pub fn conn(&self) -> &xcb::Connection {
         &self.conn
     }
-}
-
-impl std::ops::Deref for XConnection {
-    type Target = xcb::Connection;
-    fn deref(&self) -> &Self::Target {
-        &self.conn
-    }
-}
-
-impl XConnection {
-    pub(crate) fn send_request_no_reply<R>(&self, req: &R) -> anyhow::Result<()>
-    where
-        R: xcb::RequestWithoutReply + std::fmt::Debug,
-    {
-        self.conn
-            .send_and_check_request(req)
-            .with_context(|| format!("{req:#?}"))
-    }
-
-    pub(crate) fn send_request_no_reply_log<R>(&self, req: &R)
-    where
-        R: xcb::RequestWithoutReply + std::fmt::Debug,
-    {
-        if let Err(err) = self.send_request_no_reply(req) {
-            log::error!("{err:#}");
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn send_and_wait_request<R>(
-        &self,
-        req: &R,
-    ) -> anyhow::Result<<<R as xcb::Request>::Cookie as xcb::CookieWithReplyChecked>::Reply>
-    where
-        R: xcb::Request + std::fmt::Debug,
-        R::Cookie: xcb::CookieWithReplyChecked,
-    {
-        let cookie = self.conn.send_request(req);
-        self.conn
-            .wait_for_reply(cookie)
-            .with_context(|| format!("{req:#?}"))
-    }
-
     pub fn run_message_loop(&self, read_fd: &mut FileDescriptor) -> anyhow::Result<()> {
         const TOK_SIMULATE: mio::Token = Token(0xffff_fffc);
         const TOK_XKB: mio::Token = Token(0xffff_fffb);
@@ -127,6 +84,39 @@ impl XConnection {
                 }
             }
         }
+    }
+
+    pub(crate) fn send_request_no_reply<R>(&self, req: &R) -> anyhow::Result<()>
+    where
+        R: xcb::RequestWithoutReply + std::fmt::Debug,
+    {
+        self.conn
+            .send_and_check_request(req)
+            .with_context(|| format!("{req:#?}"))
+    }
+
+    pub(crate) fn send_request_no_reply_log<R>(&self, req: &R)
+    where
+        R: xcb::RequestWithoutReply + std::fmt::Debug,
+    {
+        if let Err(err) = self.send_request_no_reply(req) {
+            log::error!("{err:#}");
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn send_and_wait_request<R>(
+        &self,
+        req: &R,
+    ) -> anyhow::Result<<<R as xcb::Request>::Cookie as xcb::CookieWithReplyChecked>::Reply>
+    where
+        R: xcb::Request + std::fmt::Debug,
+        R::Cookie: xcb::CookieWithReplyChecked,
+    {
+        let cookie = self.conn.send_request(req);
+        self.conn
+            .wait_for_reply(cookie)
+            .with_context(|| format!("{req:#?}"))
     }
 
     fn process_key_event_log(&self, key_event: &KeyEvent) {
@@ -168,3 +158,10 @@ impl XConnection {
 }
 
 impl ConnectionOps for XConnection {}
+
+impl std::ops::Deref for XConnection {
+    type Target = xcb::Connection;
+    fn deref(&self) -> &Self::Target {
+        &self.conn
+    }
+}

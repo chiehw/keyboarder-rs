@@ -252,7 +252,6 @@ impl XKeyboard {
         current_keymap: &xkb::Keymap,
         current_state: &xkb::State,
     ) -> anyhow::Result<()> {
-        dbg!("update keymap");
         let (code_phys_map, phys_code_map) = build_phys_keycode_map(current_keymap);
         let mut new_keysym_map = HashMap::new();
         let mut new_unused_keycodes: Vec<xkb::Keycode> = vec![];
