@@ -1,4 +1,3 @@
-mod common;
 mod connection;
 mod keyboard;
 mod keycodes;
