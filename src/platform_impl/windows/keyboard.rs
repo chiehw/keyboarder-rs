@@ -1,15 +1,24 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, ptr::null_mut};
 
 use winapi::{
     shared::minwindef::HKL,
-    um::winuser::{
-        GetKeyboardLayout, GetKeyboardState, MapVirtualKeyW, SetKeyboardState, ToUnicode,
-        MAPVK_VK_TO_VSC, VK_CONTROL, VK_DECIMAL, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN,
-        VK_MENU, VK_PACKET, VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT,
+    um::{
+        processthreadsapi::GetCurrentThreadId,
+        winuser::{
+            AttachThreadInput, GetForegroundWindow, GetKeyboardLayout, GetKeyboardState,
+            GetWindowThreadProcessId, MapVirtualKeyW, SetKeyboardState, ToUnicode, MAPVK_VK_TO_VSC,
+            VK_CONTROL, VK_DECIMAL, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_PACKET,
+            VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT,
+        },
     },
 };
 
-use crate::types::Modifiers;
+use crate::types::{Modifiers, PhysKeyCode, Scancode};
+
+use super::{
+    keycodes::build_phys_keycode_map,
+    listen::{FALSE, TRUE},
+};
 
 pub type VirtualKey = u8;
 
@@ -25,20 +34,30 @@ pub struct WinKeyboard {
     layout: HKL,
     has_alt_gr: bool,
     dead_keys: HashMap<(Modifiers, VirtualKey), DeadKey>,
-}
-
-impl Default for WinKeyboard {
-    fn default() -> Self {
-        Self::new()
-    }
+    thread_id: u32,
+    window_thread_id: u32,
+    last_states: RefCell<[u8; 256]>,
+    phys_code_map: RefCell<HashMap<PhysKeyCode, Scancode>>,
+    code_phys_map: RefCell<HashMap<Scancode, PhysKeyCode>>,
 }
 
 impl WinKeyboard {
-    pub fn new() -> Self {
+    pub fn create_new() -> Self {
+        let window_thread_id =
+            unsafe { GetWindowThreadProcessId(GetForegroundWindow(), null_mut()) };
+        let thread_id = unsafe { GetCurrentThreadId() };
+
+        let (code_phys_map, phys_code_map) = build_phys_keycode_map();
+
         Self {
             layout: std::ptr::null_mut(),
             has_alt_gr: false,
             dead_keys: HashMap::new(),
+            thread_id,
+            window_thread_id,
+            last_states: RefCell::new([0u8; 256]),
+            phys_code_map: RefCell::new(phys_code_map),
+            code_phys_map: RefCell::new(code_phys_map),
         }
     }
 
@@ -284,11 +303,8 @@ impl WinKeyboard {
         self.has_alt_gr
     }
 
-    pub fn get_current_modifiers(&mut self) {
-        let mut states = [0u8; 256];
-        unsafe {
-            GetKeyboardState(states.as_mut_ptr());
-        }
+    pub fn get_current_modifiers(&self) -> Modifiers {
+        self.update_states();
 
         let mut modifiers = Modifiers::default();
 
@@ -305,17 +321,29 @@ impl WinKeyboard {
             (VK_LWIN, Modifiers::META),
             (VK_RWIN, Modifiers::META),
         ] {
-            if Self::is_pressed(&states, vk_code) {
+            if self.is_pressed(vk_code) {
                 modifiers |= modifier;
             }
         }
-        self.has_alt_gr();
 
-        dbg!(modifiers);
+        modifiers
     }
 
-    fn is_pressed(states: &[u8], vk_code: i32) -> bool {
-        (states[vk_code as usize] & 0x80) != 0
+    fn update_states(&self) {
+        let mut states = self.last_states.borrow_mut();
+        unsafe {
+            if AttachThreadInput(self.thread_id, self.window_thread_id, TRUE) == 1 {
+                // Current state of the modifiers in keyboard
+                GetKeyboardState(states.as_mut_ptr());
+
+                // Detach
+                AttachThreadInput(self.thread_id, self.window_thread_id, FALSE);
+            }
+        }
+    }
+
+    fn is_pressed(&self, vk_code: i32) -> bool {
+        (self.last_states.borrow()[vk_code as usize] & 0x80) != 0
     }
 
     pub fn is_dead_key_leader(&mut self, mods: Modifiers, vk: u32) -> Option<char> {
@@ -337,5 +365,9 @@ impl WinKeyboard {
             | Modifiers::LEFT_CTRL
             | Modifiers::RIGHT_CTRL
             | Modifiers::LEFT_ALT)
+    }
+
+    pub fn scan_to_phys(&self, scan: Scancode) -> Option<PhysKeyCode> {
+        self.code_phys_map.borrow().get(&scan).copied()
     }
 }

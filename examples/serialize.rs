@@ -12,7 +12,7 @@
 //         key: KeyCode::Physical(PhysKeyCode::KeyQ),
 //         press: false,
 //         modifiers: Modifiers::SHIFT,
-//         click: false,
+//         raw_event: None,
 //     };
 //     // write in [%date].kbd
 //     let mut key_event_file = KeyEventFile::create_new(&key_event)?;

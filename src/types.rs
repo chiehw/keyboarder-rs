@@ -2,6 +2,7 @@ use bitflags::*;
 use serde::{Deserialize, Serialize};
 
 pub type Keycode = u32;
+pub type Scancode = u32;
 pub use anyhow::{anyhow, ensure, Result};
 pub use log;
 pub use std::os::raw::c_int;
@@ -116,7 +117,6 @@ pub enum PhysKeyCode {
     KpMultiply,
     KpDivide,
     KpDecimal,
-    KpEnter,
     Kp0,
     Kp1,
     Kp2,
@@ -134,6 +134,145 @@ pub enum PhysKeyCode {
     VolumeDown,
     VolumeUp,
     VolumeMute,
+    Apps,
+}
+
+impl PhysKeyCode {
+    /// Return true if the key represents a modifier key.
+    pub fn is_modifier(&self) -> bool {
+        matches!(
+            self,
+            Self::ShiftLeft
+                | Self::ShiftRight
+                | Self::ControlLeft
+                | Self::ControlRight
+                | Self::MetaLeft
+                | Self::MetaRight
+                | Self::AltLeft
+                | Self::AltRight
+        )
+    }
+    pub fn to_key_code(self) -> KeyCode {
+        match self {
+            Self::ShiftLeft => KeyCode::LeftShift,
+            Self::ControlLeft => KeyCode::LeftControl,
+            Self::MetaLeft => KeyCode::LeftWindows,
+            Self::AltLeft => KeyCode::LeftAlt,
+            Self::ShiftRight => KeyCode::RightShift,
+            Self::ControlRight => KeyCode::RightControl,
+            Self::MetaRight => KeyCode::RightWindows,
+            Self::AltRight => KeyCode::RightAlt,
+            Self::LeftArrow => KeyCode::LeftArrow,
+            Self::RightArrow => KeyCode::RightArrow,
+            Self::UpArrow => KeyCode::UpArrow,
+            Self::DownArrow => KeyCode::DownArrow,
+            Self::CapsLock => KeyCode::CapsLock,
+            Self::F1 => KeyCode::Function(1),
+            Self::F2 => KeyCode::Function(2),
+            Self::F3 => KeyCode::Function(3),
+            Self::F4 => KeyCode::Function(4),
+            Self::F5 => KeyCode::Function(5),
+            Self::F6 => KeyCode::Function(6),
+            Self::F7 => KeyCode::Function(7),
+            Self::F8 => KeyCode::Function(8),
+            Self::F9 => KeyCode::Function(9),
+            Self::F10 => KeyCode::Function(10),
+            Self::F11 => KeyCode::Function(11),
+            Self::F12 => KeyCode::Function(12),
+            Self::F13 => KeyCode::Function(13),
+            Self::F14 => KeyCode::Function(14),
+            Self::F15 => KeyCode::Function(15),
+            Self::F16 => KeyCode::Function(16),
+            Self::F17 => KeyCode::Function(17),
+            Self::F18 => KeyCode::Function(18),
+            Self::F19 => KeyCode::Function(19),
+            Self::F20 => KeyCode::Function(20),
+            Self::Kp0 => KeyCode::Numpad(0),
+            Self::Kp1 => KeyCode::Numpad(1),
+            Self::Kp2 => KeyCode::Numpad(2),
+            Self::Kp3 => KeyCode::Numpad(3),
+            Self::Kp4 => KeyCode::Numpad(4),
+            Self::Kp5 => KeyCode::Numpad(5),
+            Self::Kp6 => KeyCode::Numpad(6),
+            Self::Kp7 => KeyCode::Numpad(7),
+            Self::Kp8 => KeyCode::Numpad(8),
+            Self::Kp9 => KeyCode::Numpad(9),
+            Self::KpMultiply => KeyCode::Multiply,
+            Self::KpDecimal => KeyCode::Decimal,
+            Self::KpDivide => KeyCode::Divide,
+            Self::KpPlus => KeyCode::Plus,
+            Self::KpMinus => KeyCode::Minus,
+            Self::KeyA => KeyCode::Char('a'),
+            Self::KeyB => KeyCode::Char('b'),
+            Self::KeyC => KeyCode::Char('c'),
+            Self::KeyD => KeyCode::Char('d'),
+            Self::KeyE => KeyCode::Char('e'),
+            Self::KeyF => KeyCode::Char('f'),
+            Self::KeyG => KeyCode::Char('g'),
+            Self::KeyH => KeyCode::Char('h'),
+            Self::KeyI => KeyCode::Char('i'),
+            Self::KeyJ => KeyCode::Char('j'),
+            Self::KeyK => KeyCode::Char('k'),
+            Self::KeyL => KeyCode::Char('l'),
+            Self::KeyM => KeyCode::Char('m'),
+            Self::KeyN => KeyCode::Char('n'),
+            Self::KeyO => KeyCode::Char('o'),
+            Self::KeyP => KeyCode::Char('p'),
+            Self::KeyQ => KeyCode::Char('q'),
+            Self::KeyR => KeyCode::Char('r'),
+            Self::KeyS => KeyCode::Char('s'),
+            Self::KeyT => KeyCode::Char('t'),
+            Self::KeyU => KeyCode::Char('u'),
+            Self::KeyV => KeyCode::Char('v'),
+            Self::KeyW => KeyCode::Char('w'),
+            Self::KeyX => KeyCode::Char('x'),
+            Self::KeyY => KeyCode::Char('y'),
+            Self::KeyZ => KeyCode::Char('z'),
+            Self::BackSlash => KeyCode::Char('\\'),
+            Self::Comma => KeyCode::Char(','),
+            Self::Backspace => KeyCode::Char('\u{8}'),
+            Self::KpDelete | Self::Delete => KeyCode::Char('\u{7f}'),
+            Self::End => KeyCode::End,
+            Self::Home => KeyCode::Home,
+            Self::Equal | Self::Equal => KeyCode::Char('='),
+            Self::Escape => KeyCode::Char('\u{1b}'),
+            Self::Function => KeyCode::Physical(self),
+            Self::BackQuote => KeyCode::Char('`'),
+            Self::Help => KeyCode::Help,
+            Self::Insert => KeyCode::Insert,
+            Self::Num0 => KeyCode::Char('0'),
+            Self::Num1 => KeyCode::Char('1'),
+            Self::Num2 => KeyCode::Char('2'),
+            Self::Num3 => KeyCode::Char('3'),
+            Self::Num4 => KeyCode::Char('4'),
+            Self::Num5 => KeyCode::Char('5'),
+            Self::Num6 => KeyCode::Char('6'),
+            Self::Num7 => KeyCode::Char('7'),
+            Self::Num8 => KeyCode::Char('8'),
+            Self::Num9 => KeyCode::Char('9'),
+            Self::Return => KeyCode::Char('\r'),
+            Self::LeftBracket => KeyCode::Char('['),
+            Self::RightBracket => KeyCode::Char(']'),
+            Self::Minus => KeyCode::Char('-'),
+            Self::VolumeMute => KeyCode::VolumeMute,
+            Self::VolumeUp => KeyCode::VolumeUp,
+            Self::VolumeDown => KeyCode::VolumeDown,
+            Self::NumLock => KeyCode::NumLock,
+            Self::PageUp => KeyCode::PageUp,
+            Self::PageDown => KeyCode::PageDown,
+            Self::Dot => KeyCode::Char('.'),
+            Self::Quote => KeyCode::Char('\''),
+            Self::SemiColon => KeyCode::Char(';'),
+            Self::Slash => KeyCode::Char('/'),
+            Self::Space => KeyCode::Char(' '),
+            Self::Tab => KeyCode::Char('\t'),
+            Self::PrintScreen => KeyCode::PrintScreen,
+            Self::ScrollLock => KeyCode::ScrollLock,
+            Self::Pause => KeyCode::Pause,
+            Self::KpReturn => KeyCode::Char('\r'),
+            Self::Apps => KeyCode::Apps,
+        }
+    }
 }
 
 bitflags! {
@@ -191,6 +330,29 @@ impl TryFrom<String> for Modifiers {
         }
 
         Ok(mods)
+    }
+}
+
+impl From<PhysKeyCode> for Modifiers {
+    fn from(phys_key: PhysKeyCode) -> Modifiers {
+        let mut mods = Modifiers::NONE;
+
+        for (key, modifier) in [
+            (PhysKeyCode::AltLeft, Modifiers::ALT),
+            (PhysKeyCode::AltRight, Modifiers::ALT),
+            (PhysKeyCode::ControlLeft, Modifiers::CTRL),
+            (PhysKeyCode::ControlRight, Modifiers::CTRL),
+            (PhysKeyCode::ShiftLeft, Modifiers::SHIFT),
+            (PhysKeyCode::ShiftRight, Modifiers::SHIFT),
+            (PhysKeyCode::MetaLeft, Modifiers::META),
+            (PhysKeyCode::MetaRight, Modifiers::META),
+        ] {
+            if phys_key == key {
+                mods |= modifier;
+            }
+        }
+
+        mods
     }
 }
 
@@ -292,6 +454,24 @@ impl Modifiers {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RawKeyEvent {
+    pub key: KeyCode,
+    /// If true, this is a key down rather than a key up event
+    pub press: bool,
+
+    pub modifiers: Modifiers,
+    /// The physical location of the key on an ANSI-Standard US layout
+    pub phys_key: Option<PhysKeyCode>,
+    /// The OS and hardware dependent key code for the key
+    /// - windows: virtual key
+    /// - linux: keysym
+    pub raw_code: u32,
+    /// The *other* OS and hardware dependent key code for the key
+    #[cfg(windows)]
+    pub scan_code: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyEvent {
     /// Which key was pressed
     pub key: KeyCode,
@@ -299,7 +479,7 @@ pub struct KeyEvent {
     pub press: bool,
     /// Which modifiers are down
     pub modifiers: Modifiers,
-    pub click: bool,
+    pub raw_event: Option<RawKeyEvent>,
 }
 
 impl Default for KeyEvent {
@@ -308,7 +488,7 @@ impl Default for KeyEvent {
             key: KeyCode::RawCode(0),
             press: false,
             modifiers: Modifiers::NONE,
-            click: false,
+            raw_event: None,
         }
     }
 }
@@ -319,7 +499,7 @@ impl KeyEvent {
             key: KeyCode::Physical(key),
             press,
             modifiers: Modifiers::NONE,
-            click: false,
+            raw_event: None,
         }
     }
 
@@ -328,7 +508,7 @@ impl KeyEvent {
             key,
             press,
             modifiers: Modifiers::NONE,
-            click: false,
+            raw_event: None,
         }
     }
 
@@ -444,9 +624,9 @@ pub enum KeyCode {
     /// Numeric keypad digits 0-9
     Numpad(u8),
     Multiply,
-    Add,
+    Plus,
     Separator,
-    Subtract,
+    Minus,
     Decimal,
     Divide,
     /// F1-F24 are possible
@@ -474,6 +654,7 @@ pub enum KeyCode {
     ApplicationRightArrow,
     ApplicationUpArrow,
     ApplicationDownArrow,
+    Apps,
 }
 
 impl KeyCode {
@@ -542,19 +723,4 @@ pub enum GroupIndex {
     N2,
     N3,
     N4,
-}
-
-
-
-#[derive(Debug, Clone)]
-pub enum SimulateEvent {
-    KeyCodeEvent(KeyCodeEvent),
-    CharNoModifi(char),
-    KeyEvent(KeyEvent),
-}
-
-#[derive(Debug, Clone)]
-pub struct KeyCodeEvent {
-    pub keycode: KeyCode,
-    pub press: bool,
 }

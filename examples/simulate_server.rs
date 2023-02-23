@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
         key: KeyCode::Physical(PhysKeyCode::KeyQ),
         press: true,
         modifiers: Modifiers::SHIFT,
-        click: false,
+        raw_event: None,
     };
 
     let handle = Simulator::spawn_server()?;

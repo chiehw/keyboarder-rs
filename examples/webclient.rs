@@ -18,7 +18,7 @@ fn simulate(phys: PhysKeyCode, press: bool) -> anyhow::Result<()> {
         key: KeyCode::Physical(phys),
         press,
         modifiers: Modifiers::NONE,
-        click: false,
+        raw_event: None,
     };
     send_key_event(&key_event)?;
 

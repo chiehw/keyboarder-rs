@@ -20,13 +20,13 @@ fn test_shortcut() {
         key: KeyCode::KeySym(49),
         press: true,
         modifiers: Modifiers::SHIFT,
-        click: false,
+        raw_event: None,
     });
 
     simulator.simulate_key_event(&KeyEvent {
         key: KeyCode::KeySym(49),
         press: false,
         modifiers: Modifiers::SHIFT,
-        click: false,
+        raw_event: None,
     });
 }

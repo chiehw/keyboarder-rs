@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
-use crate::types::{Keycode, PhysKeyCode};
+use crate::types::{PhysKeyCode, Scancode};
 
-pub fn build_phys_keycode_map() -> (HashMap<Keycode, PhysKeyCode>, HashMap<PhysKeyCode, Keycode>) {
-    let mut code_phys_map: HashMap<Keycode, PhysKeyCode> = HashMap::new();
-    let mut phys_code_map: HashMap<PhysKeyCode, Keycode> = HashMap::new();
+pub fn build_phys_keycode_map() -> (
+    HashMap<Scancode, PhysKeyCode>,
+    HashMap<PhysKeyCode, Scancode>,
+) {
+    let mut code_phys_map: HashMap<Scancode, PhysKeyCode> = HashMap::new();
+    let mut phys_code_map: HashMap<PhysKeyCode, Scancode> = HashMap::new();
 
     // <https://github.com/fufesou/rdev/blob/master/src/windows/keycodes.rs>
     for (scan_code, phys) in &[
@@ -93,14 +96,14 @@ pub fn build_phys_keycode_map() -> (HashMap<Keycode, PhysKeyCode>, HashMap<PhysK
         (0x33, PhysKeyCode::Comma),
         (0x34, PhysKeyCode::Dot),
         (0x35, PhysKeyCode::Slash),
-        (0x35, PhysKeyCode::ShiftRight),
+        (0x36, PhysKeyCode::ShiftRight),
         (0xE048, PhysKeyCode::UpArrow),
         (0x4F, PhysKeyCode::Kp1),
         (0x50, PhysKeyCode::Kp2),
         (0x51, PhysKeyCode::Kp3),
-        (0xE01C, PhysKeyCode::KpEnter),
+        (0xE01C, PhysKeyCode::KpReturn),
         (0x1D, PhysKeyCode::ControlLeft),
-        (0xE01D, PhysKeyCode::AltLeft),
+        (0x38, PhysKeyCode::AltLeft),
         (0x39, PhysKeyCode::Space),
         (0xE038, PhysKeyCode::AltRight),
         (0xE01D, PhysKeyCode::ControlRight),
@@ -114,6 +117,8 @@ pub fn build_phys_keycode_map() -> (HashMap<Keycode, PhysKeyCode>, HashMap<PhysK
         (0xE020, PhysKeyCode::VolumeMute),
         (0xE02E, PhysKeyCode::VolumeDown),
         (0xE030, PhysKeyCode::VolumeUp),
+        (0xE05D, PhysKeyCode::Apps),
+        (0x53, PhysKeyCode::KpDecimal),
         (0x0000, PhysKeyCode::Help), // todo
     ] {
         code_phys_map.insert(*scan_code, *phys);

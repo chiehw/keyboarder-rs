@@ -42,13 +42,13 @@ fn test_char_keycode_with_modifier() {
         key: KeyCode::RawCode(10),
         press: true,
         modifiers: Modifiers::SHIFT,
-        click: false,
+        raw_event: None,
     });
     simulator.simulate_key_event(&KeyEvent {
         key: KeyCode::RawCode(10),
         press: false,
         modifiers: Modifiers::SHIFT,
-        click: false,
+        raw_event: None,
     });
 }
 
@@ -65,12 +65,12 @@ fn test_char_by_phys() {
         key: KeyCode::Physical(PhysKeyCode::KeyQ),
         press: true,
         modifiers: Modifiers::SHIFT,
-        click: false,
+        raw_event: None,
     });
     simulator.simulate_key_event(&KeyEvent {
         key: KeyCode::Physical(PhysKeyCode::KeyQ),
         press: false,
         modifiers: Modifiers::SHIFT,
-        click: false,
+        raw_event: None,
     });
 }

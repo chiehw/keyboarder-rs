@@ -1,20 +1,20 @@
-// use std::ptr::null_mut;
-// use keyboarder::platform_impl::Keyboard;
-// use winapi::um::winuser::{GetForegroundWindow, GetKeyboardLayout, GetWindowThreadProcessId};
+use keyboarder::platform_impl::Listener;
 
-// fn main() {
-//     env_logger::init();
-//     std::env::set_var("DISPLAY", ":0");
-//     std::env::set_var("RUST_LOG", "trace");
+fn main() -> anyhow::Result<()> {
+    env_logger::init();
+    std::env::set_var("DISPLAY", ":0");
+    std::env::set_var("RUST_LOG", "trace");
 
-//     // WListener::new().run();
+    let mut listener = Listener::new()?;
+    dbg!("new");
+    listener.run_loop()?;
 
-//     unsafe {
-//         let current_window_thread_id = GetWindowThreadProcessId(GetForegroundWindow(), null_mut());
-//         let _hkl = GetKeyboardLayout(current_window_thread_id);
-//     }
+    Ok(())
 
-//     Keyboard::new().get_current_modifiers();
-// }
+    // unsafe {
+    //     let current_window_thread_id = GetWindowThreadProcessId(GetForegroundWindow(), null_mut());
+    //     let _hkl = GetKeyboardLayout(current_window_thread_id);
+    // }
 
-fn main() {}
+    // Keyboard::new().get_current_modifiers();
+}
