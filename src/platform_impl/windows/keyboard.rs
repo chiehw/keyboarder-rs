@@ -1,5 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, ptr::null_mut};
 
+use bincode::de;
 use winapi::{
     shared::minwindef::HKL,
     um::{
@@ -13,7 +14,7 @@ use winapi::{
     },
 };
 
-use crate::types::{Modifiers, PhysKeyCode, Scancode};
+use crate::types::{Modifiers, PhysKeyCode, ResolvedDeadKey, Scancode};
 
 use super::{
     keycodes::build_phys_keycode_map,
@@ -226,7 +227,7 @@ impl WinKeyboard {
                                 chr
                             );
 
-                            map.insert((sec_mods, vk as u8), chr);
+                            map.insert((sec_mods, sec_vk as u8), chr);
                         }
                     }
                 }
@@ -242,13 +243,15 @@ impl WinKeyboard {
                 );
             }
         }
+        Self::clear_key_state();
     }
 
     /// keep clocking the state to clear out its effects
     ///
+    /// # Safety
     /// Generate unicode is generated according to the state of
     /// the system keyboard.
-    unsafe fn clear_key_state() {
+    pub unsafe fn clear_key_state() {
         let mut out = [0u16; 16];
         let state = [0u8; 256];
         let scan = MapVirtualKeyW(VK_DECIMAL as _, MAPVK_VK_TO_VSC);
@@ -288,7 +291,6 @@ impl WinKeyboard {
 
         self.probe_alt_gr();
         self.probe_dead_keys();
-        dbg!(self.has_alt_gr);
         log::trace!("dead_keys: {:#x?}", self.dead_keys);
 
         // Todo: Maybe SetKeyboardState can use in release key.
@@ -369,5 +371,39 @@ impl WinKeyboard {
 
     pub fn scan_to_phys(&self, scan: Scancode) -> Option<PhysKeyCode> {
         self.code_phys_map.borrow().get(&scan).copied()
+    }
+
+    pub fn resolve_dead_key(
+        &mut self,
+        last_keys: (Modifiers, u32),
+        cur_keys: (Modifiers, u32),
+    ) -> ResolvedDeadKey {
+        unsafe {
+            self.update();
+        }
+        if last_keys.1 <= u8::MAX.into() && cur_keys.1 <= u8::MAX.into() {
+            if let Some(dead) = self
+                .dead_keys
+                .get(&(Self::fixup_mods(last_keys.0), last_keys.1 as u8))
+            {
+                dbg!(&last_keys);
+                dbg!(&dead.map);
+                if let Some(chr) = dead
+                    .map
+                    .get(&(Self::fixup_mods(cur_keys.0), cur_keys.1 as u8))
+                    .copied()
+                {
+                    dbg!(chr);
+                    dbg!(chr);
+                    ResolvedDeadKey::Combined(chr)
+                } else {
+                    ResolvedDeadKey::InvalidCombination(dead.dead_char)
+                }
+            } else {
+                ResolvedDeadKey::InvalidDeadKey
+            }
+        } else {
+            ResolvedDeadKey::InvalidDeadKey
+        }
     }
 }
