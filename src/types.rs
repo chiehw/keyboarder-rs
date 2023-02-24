@@ -724,3 +724,10 @@ pub enum GroupIndex {
     N3,
     N4,
 }
+
+#[derive(Debug)]
+pub enum ResolvedDeadKey {
+    InvalidDeadKey,
+    Combined(char),
+    InvalidCombination(char),
+}
