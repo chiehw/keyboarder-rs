@@ -152,16 +152,25 @@ impl XSimulator {
         let keyboard = &self.conn().keyboard;
 
         let current_modifiers = keyboard.get_current_modifiers();
-        let key_event_vec = current_modifiers.diff_modifiers(&key_event.modifiers);
 
-        self.prepare_pressed_keys(&key_event_vec)?;
+        match &key_event.raw_event {
+            Some(raw_event) => {
+                let key_event_vec = current_modifiers.diff_modifiers(&raw_event.modifiers);
+                self.prepare_pressed_keys(&key_event_vec)?;
 
-        match key_event.key {
-            KeyCode::RawCode(keycode) => self.simulate_keycode(keycode, key_event.press),
-            KeyCode::KeySym(keysym) => self.simulate_keysym(keysym, key_event.press),
-            KeyCode::Physical(phys) => self.simulate_phys(phys, key_event.press),
+                self.simulate_phys(raw_event.key, raw_event.press)
+            }
+            None => {
+                let key_event_vec = current_modifiers.diff_modifiers(&key_event.modifiers);
+                self.prepare_pressed_keys(&key_event_vec)?;
+                match key_event.key {
+                    KeyCode::RawCode(keycode) => self.simulate_keycode(keycode, key_event.press),
+                    KeyCode::KeySym(keysym) => self.simulate_keysym(keysym, key_event.press),
+                    KeyCode::Physical(phys) => self.simulate_phys(phys, key_event.press),
 
-            _ => {}
+                    _ => {}
+                }
+            }
         }
 
         Ok(())
