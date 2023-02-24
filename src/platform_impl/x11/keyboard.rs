@@ -56,7 +56,7 @@ pub fn build_char_event_map(
                     key: KeyCode::RawCode(keycode),
                     press: false,
                     modifiers: level_to_modifiers(level),
-                    click: true,
+                    raw_event: None,
                 };
                 map.insert(chr, key_event);
             }

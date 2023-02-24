@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 thread_local! {
-    static CONN: RefCell<Option<Rc<Connection>>> = RefCell::new(None);
+    pub static CONN: RefCell<Option<Rc<Connection>>> = RefCell::new(None);
 }
 
 pub trait ConnectionOps {

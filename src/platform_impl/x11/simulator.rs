@@ -1,11 +1,15 @@
 use super::connection::XConnection;
 
-use crate::simulate::Simulate;
-use crate::types::{DeadKeyStatus, KeyCode, KeyEvent, SimulateEvent};
+use crate::connection::ConnectionOps;
+use crate::simulate::{Simulate, SENDER};
+use crate::types::{KeyCode, KeyEvent};
 
 use crate::types::PhysKeyCode;
 use anyhow::{ensure, Context, Ok};
+use filedescriptor::Pipe;
 
+use std::io::Write;
+use std::thread::JoinHandle;
 use std::{
     collections::HashSet,
     rc::{Rc, Weak},
@@ -18,7 +22,6 @@ pub struct XSimulator {
     conn: Weak<XConnection>,
     device_id: u8,
     pressed_key: HashSet<u8>,
-    dead_key_status: DeadKeyStatus,
     root: xcb::x::Window,
 }
 
@@ -106,32 +109,6 @@ impl Simulate for XSimulator {
             log::error!("{err:#}")
         };
     }
-
-    fn simulate_event(&mut self, sim_event: crate::types::SimulateEvent) {
-        match sim_event {
-            SimulateEvent::KeyCodeEvent(keycode_event) => {
-                let press = keycode_event.press;
-                match keycode_event.keycode {
-                    KeyCode::RawCode(keycode) => {
-                        self.simulate_keycode(keycode, press);
-                    }
-                    KeyCode::Physical(phys) => {
-                        self.simulate_phys(phys, press);
-                    }
-                    KeyCode::KeySym(keysym) => {
-                        self.simulate_keysym(keysym, press);
-                    }
-                    _ => {}
-                }
-            }
-            SimulateEvent::KeyEvent(key_event) => {
-                self.simulate_key_event(&key_event);
-            }
-            SimulateEvent::CharNoModifi(chr) => {
-                self.simulate_char_without_modifiers(chr);
-            }
-        }
-    }
 }
 
 impl XSimulator {
@@ -144,7 +121,6 @@ impl XSimulator {
             pressed_key: HashSet::new(),
             root,
             device_id,
-            dead_key_status: DeadKeyStatus::None,
         }
     }
 
@@ -181,30 +157,9 @@ impl XSimulator {
         self.prepare_pressed_keys(&key_event_vec)?;
 
         match key_event.key {
-            KeyCode::RawCode(keycode) => {
-                if key_event.click {
-                    self.simulate_keycode(keycode, true);
-                    self.simulate_keycode(keycode, false);
-                } else {
-                    self.simulate_keycode(keycode, key_event.press)
-                };
-            }
-            KeyCode::KeySym(keysym) => {
-                if key_event.click {
-                    self.simulate_keysym(keysym, true);
-                    self.simulate_keysym(keysym, false);
-                } else {
-                    self.simulate_keysym(keysym, key_event.press)
-                };
-            }
-            KeyCode::Physical(phys) => {
-                if key_event.click {
-                    self.simulate_phys(phys, true);
-                    self.simulate_phys(phys, false);
-                } else {
-                    self.simulate_phys(phys, key_event.press)
-                };
-            }
+            KeyCode::RawCode(keycode) => self.simulate_keycode(keycode, key_event.press),
+            KeyCode::KeySym(keysym) => self.simulate_keysym(keysym, key_event.press),
+            KeyCode::Physical(phys) => self.simulate_phys(phys, key_event.press),
 
             _ => {}
         }

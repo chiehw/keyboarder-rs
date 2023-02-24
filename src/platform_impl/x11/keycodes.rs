@@ -111,7 +111,7 @@ pub fn build_phys_keycode_map(
         ("KP1", PhysKeyCode::Kp1),
         ("KP2", PhysKeyCode::Kp2),
         ("KP3", PhysKeyCode::Kp3),
-        ("KPEN", PhysKeyCode::KpEnter),
+        ("KPEN", PhysKeyCode::KpReturn),
         ("LCTL", PhysKeyCode::ControlLeft),
         ("LALT", PhysKeyCode::AltLeft),
         ("SPCE", PhysKeyCode::Space),
