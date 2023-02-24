@@ -1,5 +1,5 @@
 use super::keyboard::WinKeyboard;
-use crate::types::{KeyCode, RawKeyEvent};
+use crate::types::{KeyCode, KeyEvent, RawKeyEvent, ResolvedDeadKey};
 use crate::types::{Modifiers, PhysKeyCode};
 use parking_lot::Mutex;
 use std::cell::RefCell;
@@ -13,9 +13,9 @@ use winapi::shared::minwindef::{LPARAM, LRESULT, WPARAM};
 use winapi::shared::windef::HHOOK;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::winuser::{
-    CallNextHookEx, GetMessageA, SetWindowsHookExA, HC_ACTION, HOOKPROC, KBDLLHOOKSTRUCT,
-    KF_ALTDOWN, KF_EXTENDED, KF_UP, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN,
-    WM_SYSKEYUP,
+    CallNextHookEx, GetKeyboardState, GetMessageA, SetWindowsHookExA, ToUnicode, HC_ACTION,
+    HOOKPROC, KBDLLHOOKSTRUCT, KF_ALTDOWN, KF_EXTENDED, KF_UP, WH_KEYBOARD_LL, WM_KEYDOWN,
+    WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
 #[allow(dead_code)]
@@ -38,6 +38,13 @@ const LLKHF_INJECTED: u32 = 0x00000010;
 const LLKHF_ALTDOWN: u32 = (KF_ALTDOWN >> 8) as u32;
 #[allow(unused)]
 const LLKHF_UP: u32 = (KF_UP >> 8) as u32;
+// <https://github.com/rustdesk/rustdesk/issues/1371>
+#[allow(unused)]
+const SC_FAKE_LSHIFT: u32 = 0x22A;
+#[allow(unused)]
+const SC_FAKE_RSHIFT: u32 = 0x236;
+#[allow(unused)]
+const SC_FAKE_LCTRL: u32 = 0x21D;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ProcEvent {
@@ -49,7 +56,9 @@ pub struct WinListener {
     event_recv: Receiver<ProcEvent>,
     keyboard: WinKeyboard,
     last_modifiers: RefCell<Modifiers>,
+    // Record the stae of the modifer when long press.
     modifier_map: RefCell<HashMap<PhysKeyCode, bool>>,
+    dead_pending: Option<(Modifiers, u32)>,
 }
 
 impl WinListener {
@@ -69,14 +78,18 @@ impl WinListener {
 
         let modifier_map = {
             let mut m = HashMap::new();
-            m.insert(PhysKeyCode::ShiftLeft, false);
-            m.insert(PhysKeyCode::ShiftRight, false);
-
-            m.insert(PhysKeyCode::ControlLeft, false);
-            m.insert(PhysKeyCode::ControlRight, false);
-
-            m.insert(PhysKeyCode::AltLeft, false);
-            m.insert(PhysKeyCode::AltRight, false);
+            for phys in [
+                PhysKeyCode::ShiftLeft,
+                PhysKeyCode::ShiftRight,
+                PhysKeyCode::ControlLeft,
+                PhysKeyCode::ControlRight,
+                PhysKeyCode::AltLeft,
+                PhysKeyCode::AltRight,
+                PhysKeyCode::MetaLeft,
+                PhysKeyCode::MetaRight,
+            ] {
+                m.insert(phys, false);
+            }
 
             m
         };
@@ -86,7 +99,166 @@ impl WinListener {
             keyboard: WinKeyboard::create_new(),
             last_modifiers: RefCell::new(Modifiers::NONE),
             modifier_map: RefCell::new(modifier_map),
+            dead_pending: None,
         })
+    }
+
+    pub fn run_loop(&mut self) -> anyhow::Result<()> {
+        loop {
+            let proc_event = self.event_recv.recv()?;
+            let (lparam, wparam) = (proc_event.lparam, proc_event.wparam);
+
+            let vk_code = Self::get_vkcode(lparam);
+            let scan = Self::get_scan(lparam);
+            let press = Self::is_press(wparam);
+            let phys_key = self.keyboard.scan_to_phys(scan);
+
+            //  FIXME: it will be treated as LeftControl. Actually 0x001D is LeftControl.
+            // <https://github.com/rustdesk/rustdesk/issues/1371>
+            if scan == SC_FAKE_LCTRL {
+                continue;
+            }
+
+            // Avoid to repeat process modifier key(long press)
+            if let Some(phys) = phys_key {
+                if phys.is_modifier() {
+                    if self.is_long_press(phys, press) {
+                        continue;
+                    }
+                    self.update_modifiers_map(phys, press);
+                }
+            }
+            // todo: optimize this
+            let mut key_states = [0u8; 256];
+            unsafe { GetKeyboardState(key_states.as_mut_ptr()) };
+
+            let modifiers = self.keyboard.get_current_modifiers();
+            *self.last_modifiers.borrow_mut() = modifiers;
+
+            let raw_key_event = RawKeyEvent {
+                key: match phys_key {
+                    Some(phys) => KeyCode::Physical(phys),
+                    None => KeyCode::RawCode(vk_code),
+                },
+                press,
+                phys_key,
+                raw_code: vk_code,
+                scan_code: scan,
+                modifiers,
+            };
+
+            let is_modifier_only = phys_key.map(|p| p.is_modifier()).unwrap_or(false);
+            let key = if is_modifier_only {
+                phys_key.map(|p| p.to_key_code())
+            } else {
+                if !press && self.dead_pending.is_some() {
+                    // Don't care about key-up events while processing dead keys
+                    continue;
+                }
+
+                let dead: Option<KeyCode> =
+                    if let Some((last_modifiers, last_vk_code)) = self.dead_pending.take() {
+                        match self
+                            .keyboard
+                            .resolve_dead_key((last_modifiers, last_vk_code), (modifiers, vk_code))
+                        {
+                            ResolvedDeadKey::InvalidDeadKey => None,
+                            ResolvedDeadKey::Combined(chr) => Some(KeyCode::Char(chr)),
+                            ResolvedDeadKey::InvalidCombination(chr) => {
+                                // dead_^ + dead_^ => dead_^ (French)
+                                // They pressed the same dead key twice,
+                                // emit the underlying char again and call
+                                // it done.
+                                if let Some(new_dead_char) =
+                                    self.keyboard.is_dead_key_leader(modifiers, vk_code)
+                                {
+                                    if new_dead_char != chr {
+                                        // Happens to be the start of its own new,
+                                        // different, dead key sequence
+                                        self.dead_pending.replace((modifiers, vk_code));
+                                        continue;
+                                    }
+                                }
+
+                                // ^ + $ => ^ (French)
+                                Some(KeyCode::Char(chr))
+                            }
+                        }
+                    } else if self
+                        .keyboard
+                        .is_dead_key_leader(modifiers, vk_code)
+                        .is_some()
+                    {
+                        self.dead_pending.replace((modifiers, vk_code));
+                        continue;
+                    } else {
+                        None
+                    };
+                if dead.is_some() {
+                    dead
+                } else {
+                    // We perform conversion to unicode for ourselves,
+                    // rather than calling TranslateMessage to do it for us,
+                    let mut out = [0u16; 16];
+                    let res = unsafe {
+                        ToUnicode(
+                            vk_code as u32,
+                            scan as u32,
+                            key_states.as_ptr(),
+                            out.as_mut_ptr(),
+                            out.len() as i32,
+                            0,
+                        )
+                    };
+                    match res {
+                        1 => {
+                            let chr = unsafe { std::char::from_u32_unchecked(out[0] as u32) };
+                            Some(KeyCode::Char(chr))
+                        }
+                        // No mapping, so use our raw info
+                        0 => {
+                            log::trace!(
+                                "ToUnicode had no mapping for {:?} wparam={}",
+                                phys_key,
+                                wparam
+                            );
+                            phys_key.map(|p| p.to_key_code())
+                        }
+                        _ => {
+                            // dead key: if our dead key mapping in KeyboardLayoutInfo was
+                            // correct, we shouldn't be able to get here as we should have
+                            // landed in the dead key case above.
+                            // If somehow we do get here, we don't have a valid mapping
+                            // as -1 indicates the start of a dead key sequence,
+                            // and any other n > 1 indicates an ambiguous expansion.
+                            // Either way, indicate that we don't have a valid result.
+
+                            log::error!(
+                                "unexpected dead key expansion: \
+                                 modifiers={:?} vk={:?} res={} pressing={} {:?}",
+                                modifiers,
+                                vk_code,
+                                res,
+                                press,
+                                out
+                            );
+                            unsafe { WinKeyboard::clear_key_state() };
+                            continue;
+                        }
+                    }
+                }
+            };
+
+            let key = key.map(|k| {
+                KeyEvent {
+                    key: k,
+                    press,
+                    modifiers,
+                    raw_event: Some(raw_key_event),
+                }
+                .normalize_ctrl()
+            });
+        }
     }
 
     pub fn update_modifiers_map(&self, phys: PhysKeyCode, press: bool) {
@@ -106,52 +278,6 @@ impl WinListener {
             }
         }
         false
-    }
-
-    pub fn run_loop(&mut self) -> anyhow::Result<()> {
-        loop {
-            let proc_event = self.event_recv.recv()?;
-            let (lparam, wparam) = (proc_event.lparam, proc_event.wparam);
-
-            let vk_code = Self::get_vkcode(lparam);
-            let scan = Self::get_scan(lparam);
-            let press = Self::is_press(wparam);
-            let phys_key = self.keyboard.scan_to_phys(scan);
-
-            // Avoid to repeat process modifier key(long press)
-            if let Some(phys) = phys_key {
-                if phys.is_modifier() {
-                    if self.is_long_press(phys, press) {
-                        continue;
-                    }
-                    self.update_modifiers_map(phys, press);
-                }
-            }
-
-            let modifiers = self.keyboard.get_current_modifiers();
-            *self.last_modifiers.borrow_mut() = modifiers;
-
-            let _raw_key_event = RawKeyEvent {
-                key: match phys_key {
-                    Some(phys) => KeyCode::Physical(phys),
-                    None => KeyCode::RawCode(vk_code),
-                },
-                press,
-                phys_key,
-                raw_code: vk_code,
-                scan_code: scan,
-                modifiers,
-            };
-
-            let is_modifier_only = phys_key.map(|p| p.is_modifier()).unwrap_or(false);
-            let key = if is_modifier_only {
-                phys_key.map(|p| p.to_key_code())
-            } else {
-                None
-            };
-
-            dbg!(key);
-        }
     }
 
     #[inline]
