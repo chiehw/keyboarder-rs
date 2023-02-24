@@ -1,8 +1,10 @@
+#[cfg(target_os = "windows")]
+use keyboarder::platform_impl::Listener;
 use keyboarder::types::{KeyCode, KeyEvent, Modifiers, PhysKeyCode};
 use std::{io::Write, net::TcpStream};
 
 fn send_key_event(key_event: &KeyEvent) -> anyhow::Result<()> {
-    let mut stream = TcpStream::connect(("127.0.0.1", 7878))?;
+    let mut stream = TcpStream::connect(("192.168.59.128", 7878))?;
     let raw_data = key_event.to_u8_vec()?;
 
     stream.write_all(&raw_data)?;
@@ -26,11 +28,14 @@ fn simulate(phys: PhysKeyCode, press: bool) -> anyhow::Result<()> {
 }
 
 fn main() -> anyhow::Result<()> {
-    simulate(PhysKeyCode::ShiftLeft, true)?;
-    simulate(PhysKeyCode::KeyQ, true)?;
+    env_logger::init();
+    std::env::set_var("DISPLAY", ":0");
+    std::env::set_var("RUST_LOG", "trace");
 
-    simulate(PhysKeyCode::KeyQ, false)?;
-    simulate(PhysKeyCode::ShiftLeft, false)?;
+    #[cfg(target_os = "windows")]
+    let mut listener = Listener::new()?;
+    #[cfg(target_os = "windows")]
+    listener.run_loop(send_key_event)?;
 
     Ok(())
 }

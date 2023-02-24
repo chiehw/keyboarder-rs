@@ -11,15 +11,18 @@ fn handle_connection(mut stream: TcpStream) {
 
     let key_event_bin = KeyEventBin::new(http_request);
     let key_event = key_event_bin.to_key_event().unwrap();
+    log::info!("simulate event: {:?}", &key_event);
 
-    Simulator::event_to_server(&key_event).unwrap();
+    Simulator::event_to_server(&key_event)
+        .map_err(|err| log::error!("simulate err: {:?}", err))
+        .ok();
 }
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     std::env::set_var("DISPLAY", ":0");
 
-    let listener = TcpListener::bind("127.0.0.1:7878")?;
+    let listener = TcpListener::bind("0.0.0.0:7878")?;
     let _handle = Simulator::spawn_server()?;
 
     for stream in listener.incoming() {
