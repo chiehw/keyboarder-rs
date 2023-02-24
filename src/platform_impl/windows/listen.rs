@@ -101,13 +101,42 @@ impl WinListener {
         })
     }
 
+    pub fn run_loop<T>(&mut self, handle: T) -> anyhow::Result<()>
+    where
+        T: Fn(&KeyEvent) -> anyhow::Result<()> + 'static,
+    {
+        loop {
+            let proc_event = self.event_recv.recv()?;
+            match self.process_proc_event(&proc_event) {
+                Some(key_event) => {
+                    handle(&key_event)
+                        .map_err(|err| log::error!("send event err: {:?}", err))
+                        .ok();
+                }
+                None => continue,
+            };
+        }
+    }
+
     fn process_proc_event(&mut self, proc_event: &ProcEvent) -> Option<KeyEvent> {
         let (lparam, wparam) = (proc_event.lparam, proc_event.wparam);
 
         let vk_code = Self::get_vkcode(lparam);
         let scan = Self::get_scan(lparam);
         let press = Self::is_press(wparam);
-        let phys_key = self.keyboard.scan_to_phys(scan);
+        let phys_key = match self.keyboard.scan_to_phys(scan) {
+            Some(phys) => phys,
+            None => {
+                log::error!(
+                    "Failed to process key: wparam={:?} scan={:?}, vk_code={:?}, press={:?}",
+                    wparam,
+                    scan,
+                    vk_code,
+                    press
+                );
+                return None;
+            }
+        };
 
         //  FIXME: it will be treated as LeftControl. Actually 0x001D is LeftControl.
         // <https://github.com/rustdesk/rustdesk/issues/1371>
@@ -116,13 +145,11 @@ impl WinListener {
         }
 
         // Avoid to repeat process modifier key(long press)
-        if let Some(phys) = phys_key {
-            if phys.is_modifier() {
-                if self.is_long_press(phys, press) {
-                    return None;
-                }
-                self.update_modifiers_map(phys, press);
+        if phys_key.is_modifier() {
+            if self.is_long_press(phys_key, press) {
+                return None;
             }
+            self.update_modifiers_map(phys_key, press);
         }
         // todo: optimize this
         let mut key_states = [0u8; 256];
@@ -139,20 +166,16 @@ impl WinListener {
         }
 
         let raw_key_event = RawKeyEvent {
-            key: match phys_key {
-                Some(phys) => KeyCode::Physical(phys),
-                None => KeyCode::RawCode(vk_code),
-            },
+            key: phys_key,
             press,
-            phys_key,
             raw_code: vk_code,
             scan_code: scan,
             modifiers,
         };
 
-        let is_modifier_only = phys_key.map(|p| p.is_modifier()).unwrap_or(false);
+        let is_modifier_only = phys_key.is_modifier();
         let key = if is_modifier_only {
-            phys_key.map(|p| p.to_key_code())
+            Some(phys_key.to_key_code())
         } else {
             if !press && self.dead_pending.is_some() {
                 // Don't care about key-up events while processing dead keys
@@ -225,7 +248,7 @@ impl WinListener {
                             phys_key,
                             wparam
                         );
-                        phys_key.map(|p| p.to_key_code())
+                        Some(phys_key.to_key_code())
                     }
                     _ => {
                         // dead key: if our dead key mapping in KeyboardLayoutInfo was
@@ -261,18 +284,6 @@ impl WinListener {
             }
             .normalize_ctrl()
         })
-    }
-
-    pub fn run_loop(&mut self) -> anyhow::Result<()> {
-        loop {
-            let proc_event = self.event_recv.recv()?;
-            match self.process_proc_event(&proc_event) {
-                Some(key_event) => {
-                    dbg!(key_event);
-                }
-                None => continue,
-            };
-        }
     }
 
     pub fn update_modifiers_map(&self, phys: PhysKeyCode, press: bool) {

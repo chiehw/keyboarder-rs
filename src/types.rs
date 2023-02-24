@@ -455,13 +455,10 @@ impl Modifiers {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawKeyEvent {
-    pub key: KeyCode,
-    /// If true, this is a key down rather than a key up event
-    pub press: bool,
-
-    pub modifiers: Modifiers,
     /// The physical location of the key on an ANSI-Standard US layout
-    pub phys_key: Option<PhysKeyCode>,
+    pub key: PhysKeyCode,
+    pub press: bool,
+    pub modifiers: Modifiers,
     /// The OS and hardware dependent key code for the key
     /// - windows: virtual key
     /// - linux: keysym
