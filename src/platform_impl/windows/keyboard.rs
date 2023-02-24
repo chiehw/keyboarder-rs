@@ -1,6 +1,4 @@
 use std::{cell::RefCell, collections::HashMap, ptr::null_mut};
-
-use bincode::de;
 use winapi::{
     shared::minwindef::HKL,
     um::{
@@ -291,7 +289,6 @@ impl WinKeyboard {
 
         self.probe_alt_gr();
         self.probe_dead_keys();
-        log::trace!("dead_keys: {:#x?}", self.dead_keys);
 
         // Todo: Maybe SetKeyboardState can use in release key.
         SetKeyboardState(saved_state.as_mut_ptr());
@@ -386,15 +383,11 @@ impl WinKeyboard {
                 .dead_keys
                 .get(&(Self::fixup_mods(last_keys.0), last_keys.1 as u8))
             {
-                dbg!(&last_keys);
-                dbg!(&dead.map);
                 if let Some(chr) = dead
                     .map
                     .get(&(Self::fixup_mods(cur_keys.0), cur_keys.1 as u8))
                     .copied()
                 {
-                    dbg!(chr);
-                    dbg!(chr);
                     ResolvedDeadKey::Combined(chr)
                 } else {
                     ResolvedDeadKey::InvalidCombination(dead.dead_char)
