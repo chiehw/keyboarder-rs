@@ -105,6 +105,7 @@ pub fn build_phys_keycode_map() -> (
         (0x1D, PhysKeyCode::ControlLeft),
         (0x38, PhysKeyCode::AltLeft),
         (0x39, PhysKeyCode::Space),
+        // FIXME: scan = 0x021d(541) | 0xE038(57400)
         (0xE038, PhysKeyCode::AltRight),
         (0xE01D, PhysKeyCode::ControlRight),
         (0xE04B, PhysKeyCode::LeftArrow),
