@@ -4,18 +4,15 @@ use std::{
     net::{TcpListener, TcpStream},
 };
 
-fn handle_connection(mut stream: TcpStream) {
+fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
     let mut buf_reader = BufReader::new(&mut stream);
     let mut http_request = Vec::new();
-    let _size = buf_reader.read_to_end(&mut http_request).unwrap();
+    let _size = buf_reader.read_to_end(&mut http_request)?;
 
     let key_event_bin = KeyEventBin::new(http_request);
-    let key_event = key_event_bin.to_key_event().unwrap();
-    log::info!("simulate event: {:?}", &key_event);
+    let key_event = key_event_bin.to_key_event()?;
 
     Simulator::event_to_server(&key_event)
-        .map_err(|err| log::error!("simulate err: {:?}", err))
-        .ok();
 }
 
 fn main() -> anyhow::Result<()> {
@@ -27,7 +24,9 @@ fn main() -> anyhow::Result<()> {
 
     for stream in listener.incoming() {
         let stream: TcpStream = stream.unwrap();
-        handle_connection(stream);
+        if let Err(err) = handle_connection(stream) {
+            log::error!("simulate err: {:?}", err);
+        }
     }
     Ok(())
 }

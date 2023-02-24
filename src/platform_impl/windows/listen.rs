@@ -156,13 +156,11 @@ impl WinListener {
         unsafe { GetKeyboardState(key_states.as_mut_ptr()) };
 
         let mut modifiers = self.keyboard.get_current_modifiers();
-        dbg!(self.keyboard.has_alt_gr());
         if self.keyboard.has_alt_gr()
             && modifiers.contains(Modifiers::LEFT_CTRL | Modifiers::RIGHT_ALT)
         {
             modifiers = modifiers - Modifiers::LEFT_CTRL - Modifiers::RIGHT_ALT;
             modifiers |= Modifiers::ALT_GR;
-            dbg!(&modifiers);
         }
 
         let raw_key_event = RawKeyEvent {

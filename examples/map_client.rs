@@ -15,17 +15,6 @@ fn send_key_event(key_event: &KeyEvent) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn simulate(phys: PhysKeyCode, press: bool) -> anyhow::Result<()> {
-    let key_event = KeyEvent {
-        key: KeyCode::Physical(phys),
-        press,
-        modifiers: Modifiers::NONE,
-        raw_event: None,
-    };
-    send_key_event(&key_event)?;
-
-    Ok(())
-}
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
