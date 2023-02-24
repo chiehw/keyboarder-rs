@@ -308,13 +308,14 @@ impl WinKeyboard {
         let mut modifiers = Modifiers::default();
 
         for (vk_code, modifier) in [
-            (VK_SHIFT, Modifiers::SHIFT),
+            // todo: check vk_shift, vk_ctrl, vk_alt
+            // (VK_SHIFT, Modifiers::SHIFT),
             (VK_LSHIFT, Modifiers::LEFT_SHIFT),
             (VK_RSHIFT, Modifiers::RIGHT_SHIFT),
-            (VK_CONTROL, Modifiers::CTRL),
+            // (VK_CONTROL, Modifiers::CTRL),
             (VK_LCONTROL, Modifiers::LEFT_CTRL),
             (VK_RCONTROL, Modifiers::RIGHT_CTRL),
-            (VK_MENU, Modifiers::ALT),
+            // (VK_MENU, Modifiers::ALT),
             (VK_LMENU, Modifiers::LEFT_ALT),
             (VK_RMENU, Modifiers::RIGHT_ALT),
             (VK_LWIN, Modifiers::META),
