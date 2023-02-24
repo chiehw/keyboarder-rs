@@ -73,7 +73,7 @@ pub struct XKeyboard {
     char_event_map: RefCell<HashMap<char, KeyEvent>>,
     unused_keycodes: RefCell<Vec<xkb::Keycode>>,
     state: RefCell<xkb::State>,
-    keymap: RefCell<xkb::Keymap>,
+    pub keymap: RefCell<xkb::Keymap>,
     device_id: u8,
     group_index: RefCell<GroupIndex>,
     context: xkb::Context,
@@ -152,8 +152,12 @@ impl XKeyboard {
     }
 
     /// https://stackoverflow.com/questions/69656145/how-does-modifiersas-in-xmodmap-work-under-linux-operating-system
-    /// Use xmodmap -pm to get meaning of modifier  
-    pub fn get_current_modifiers(&self) -> Modifiers {
+    /// Use xmodmap -pm to get meaning of modifier
+    ///
+    /// # Safety
+    ///
+    /// Warning: Can't use it in simulate, fake input will not
+    pub unsafe fn get_current_modifiers(&self) -> Modifiers {
         let mut res = Modifiers::default();
 
         if self.mod_is_active(xkb::MOD_NAME_SHIFT) {

@@ -411,7 +411,24 @@ impl Modifiers {
             | Self::RIGHT_SHIFT)
     }
 
+    pub fn trans_positional_mods(self) -> Self {
+        let mut modifiers = self;
+
+        for (m, (left_mod, right_mod)) in [
+            (Self::ALT, (Self::LEFT_ALT, Self::RIGHT_ALT)),
+            (Self::CTRL, (Self::LEFT_CTRL, Self::RIGHT_CTRL)),
+            (Self::SHIFT, (Self::LEFT_SHIFT, Self::RIGHT_SHIFT)),
+        ] {
+            if self.contains(left_mod) || self.contains(right_mod){
+                modifiers = modifiers - left_mod -  right_mod;
+                modifiers |= m;
+            }
+        }
+        self
+    }
+
     /// todo!: return extra_modifiers, missing_modifiers
+    /// FIXME: linux & windows impl
     ///
     ///  Get the codes that should be clicked,
     /// modifiers of both side can be sync after clicking the keys.
@@ -420,27 +437,34 @@ impl Modifiers {
     /// compare it with the local modifiers.
     pub fn diff_modifiers(&self, modifiers: &Modifiers) -> Vec<KeyEvent> {
         let mut key_event_vec: Vec<KeyEvent> = vec![];
-        let target_modifiers = modifiers.remove_positional_mods();
+        let target_modifiers = modifiers.trans_positional_mods();
+
+        dbg!(&target_modifiers);
+
+        for pair in &[
+            (Modifiers::CAPS, PhysKeyCode::CapsLock),
+            (Modifiers::NUM, PhysKeyCode::NumLock),
+        ] {
+            let (modifier, phys) = pair.to_owned();
+            let pressed = target_modifiers.contains(modifier);
+
+            if pressed && !self.contains(modifier) || !pressed && self.contains(modifier) {
+                key_event_vec.push(KeyEvent::with_phys(phys, true));
+                key_event_vec.push(KeyEvent::with_phys(phys, false));
+            }
+            continue;
+        }
 
         for pair in &[
             (Modifiers::SHIFT, PhysKeyCode::ShiftLeft),
             (Modifiers::CTRL, PhysKeyCode::ControlLeft),
             (Modifiers::ALT, PhysKeyCode::AltLeft),
             (Modifiers::META, PhysKeyCode::MetaLeft),
-            (Modifiers::CAPS, PhysKeyCode::CapsLock),
-            (Modifiers::NUM, PhysKeyCode::NumLock),
             (Modifiers::ALT_GR, PhysKeyCode::AltRight),
         ] {
             let (modifier, phys) = pair.to_owned();
-
             let pressed = target_modifiers.contains(modifier);
-            if modifier == Modifiers::CAPS || modifier == Modifiers::NUM {
-                if pressed && !self.contains(modifier) || !pressed && self.contains(modifier) {
-                    key_event_vec.push(KeyEvent::with_phys(phys, true));
-                    key_event_vec.push(KeyEvent::with_phys(phys, false));
-                }
-                continue;
-            }
+
             if !pressed && self.contains(modifier) {
                 key_event_vec.push(KeyEvent::with_phys(phys, false))
             }

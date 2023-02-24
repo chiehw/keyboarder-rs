@@ -1,13 +1,16 @@
 use super::connection::XConnection;
+use super::keyboard::MOD_NAME_ISO_LEVEL3_SHIFT;
 
 use crate::connection::ConnectionOps;
 use crate::simulate::{Simulate, SENDER};
-use crate::types::{KeyCode, KeyEvent};
+use crate::types::{KeyCode, KeyEvent, Modifiers};
 
 use crate::types::PhysKeyCode;
 use anyhow::{ensure, Context, Ok};
 use filedescriptor::Pipe;
+use xkbcommon::xkb;
 
+use std::borrow::Borrow;
 use std::io::Write;
 use std::thread::JoinHandle;
 use std::{
@@ -148,15 +151,56 @@ impl XSimulator {
         Ok(())
     }
 
-    fn process_key_event_impl(&mut self, key_event: &KeyEvent) -> anyhow::Result<()> {
-        let keyboard = &self.conn().keyboard;
+    /// https://stackoverflow.com/questions/69656145/how-does-modifiersas-in-xmodmap-work-under-linux-operating-system
+    /// Use xmodmap -pm to get meaning of modifier
+    ///
+    /// simulate key will not send xkb event to update state. so we should get new state.
+    pub fn get_current_modifiers(&self) -> Modifiers {
+        let conn = self.conn();
+        let kbd = &conn.keyboard;
 
-        let current_modifiers = keyboard.get_current_modifiers();
+        let keymap = &conn.keyboard.keymap.borrow();
+        let device_id = kbd.get_device_id();
+        let state = xkb::x11::state_new_from_device(keymap, &conn, device_id.into());
+
+        let mut res = Modifiers::default();
+
+        if state.mod_name_is_active(xkb::MOD_NAME_SHIFT, xkb::STATE_MODS_EFFECTIVE) {
+            res |= Modifiers::SHIFT;
+        }
+        if state.mod_name_is_active(xkb::MOD_NAME_CTRL, xkb::STATE_MODS_EFFECTIVE) {
+            res |= Modifiers::CTRL;
+        }
+        if state.mod_name_is_active(xkb::MOD_NAME_ALT, xkb::STATE_MODS_EFFECTIVE) {
+            res |= Modifiers::ALT;
+        }
+        if state.mod_name_is_active(xkb::MOD_NAME_LOGO, xkb::STATE_MODS_EFFECTIVE) {
+            res |= Modifiers::META;
+        }
+
+        if state.mod_name_is_active(xkb::MOD_NAME_CAPS, xkb::STATE_MODS_EFFECTIVE) {
+            res |= Modifiers::CAPS;
+        }
+        if state.mod_name_is_active(xkb::MOD_NAME_NUM, xkb::STATE_MODS_EFFECTIVE) {
+            res |= Modifiers::NUM;
+        }
+
+        if state.mod_name_is_active(MOD_NAME_ISO_LEVEL3_SHIFT, xkb::STATE_MODS_EFFECTIVE) {
+            res |= Modifiers::ALT_GR;
+        }
+        res
+    }
+
+    fn process_key_event_impl(&mut self, key_event: &KeyEvent) -> anyhow::Result<()> {
+        let current_modifiers = self.get_current_modifiers();
+        dbg!(current_modifiers);
 
         match &key_event.raw_event {
             Some(raw_event) => {
                 let key_event_vec = current_modifiers.diff_modifiers(&raw_event.modifiers);
-                self.prepare_pressed_keys(&key_event_vec)?;
+                // if !raw_event.key.is_modifier(){
+                //     self.prepare_pressed_keys(&key_event_vec)?;
+                // };
 
                 self.simulate_phys(raw_event.key, raw_event.press)
             }
