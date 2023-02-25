@@ -1,3 +1,4 @@
+use crate::types::ServerMode;
 use crate::types::{KeyEvent, PhysKeyCode};
 use filedescriptor::FileDescriptor;
 use std::sync::Arc;
@@ -9,7 +10,7 @@ lazy_static::lazy_static! {
 }
 
 pub trait Simulate {
-    fn spawn_server() -> anyhow::Result<JoinHandle<()>>;
+    fn spawn_server(mode: ServerMode) -> anyhow::Result<JoinHandle<()>>;
 
     fn event_to_server(key_event: &KeyEvent) -> anyhow::Result<()>;
 
@@ -22,4 +23,6 @@ pub trait Simulate {
     fn simulate_phys(&mut self, phys: PhysKeyCode, press: bool);
 
     fn simulate_key_event(&mut self, key_event: &KeyEvent);
+
+    fn simulate_server(&mut self, key_event: &KeyEvent);
 }

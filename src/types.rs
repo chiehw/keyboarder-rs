@@ -419,8 +419,8 @@ impl Modifiers {
             (Self::CTRL, (Self::LEFT_CTRL, Self::RIGHT_CTRL)),
             (Self::SHIFT, (Self::LEFT_SHIFT, Self::RIGHT_SHIFT)),
         ] {
-            if self.contains(left_mod) || self.contains(right_mod){
-                modifiers = modifiers - left_mod -  right_mod;
+            if self.contains(left_mod) || self.contains(right_mod) {
+                modifiers = modifiers - left_mod - right_mod;
                 modifiers |= m;
             }
         }
@@ -477,7 +477,7 @@ impl Modifiers {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawKeyEvent {
     /// The physical location of the key on an ANSI-Standard US layout
     pub key: PhysKeyCode,
@@ -751,4 +751,10 @@ pub enum ResolvedDeadKey {
     InvalidDeadKey,
     Combined(char),
     InvalidCombination(char),
+}
+
+pub enum ServerMode {
+    Map,
+    Translate,
+    Auto,
 }

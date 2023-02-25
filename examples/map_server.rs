@@ -1,4 +1,4 @@
-use keyboarder::{platform_impl::Simulator, simulate::Simulate, types::KeyEventBin};
+use keyboarder::{platform_impl::Simulator, simulate::Simulate, types::{KeyEventBin, ServerMode}};
 use std::{
     io::{BufReader, Read},
     net::{TcpListener, TcpStream},
@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     std::env::set_var("DISPLAY", ":0");
 
     let listener = TcpListener::bind("0.0.0.0:7878")?;
-    let _handle = Simulator::spawn_server()?;
+    let _handle = Simulator::spawn_server(ServerMode::Map)?;
 
     for stream in listener.incoming() {
         let stream: TcpStream = stream.unwrap();

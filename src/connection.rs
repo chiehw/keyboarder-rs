@@ -1,4 +1,5 @@
 use crate::platform_impl::{Connection, Simulator};
+use crate::types::ServerMode;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -25,11 +26,12 @@ pub trait ConnectionOps {
         res
     }
 
-    fn with_simulator() -> anyhow::Result<Rc<Connection>> {
+    fn with_simulator(mode: ServerMode) -> anyhow::Result<Rc<Connection>> {
         let conn = Rc::new(Connection::create_new()?);
         CONN.with(|m| *m.borrow_mut() = Some(Rc::clone(&conn)));
 
-        let simulator = Simulator::new(&conn);
+        let mut simulator = Simulator::new(&conn);
+        simulator.mode.replace(mode);
         conn.simulator.borrow_mut().replace(simulator);
 
         Ok(conn)
