@@ -1,6 +1,7 @@
 use keyboarder::{
     connection::ConnectionOps,
     platform_impl::{Connection, Simulator},
+    simulate::Simulate,
 };
 
 fn main() -> anyhow::Result<()> {
@@ -8,17 +9,21 @@ fn main() -> anyhow::Result<()> {
     std::env::set_var("DISPLAY", ":0");
 
     let conn = Connection::init()?;
-    let _simulator = Simulator::new(&conn);
+    let mut simulator = Simulator::new(&conn);
 
-    //     if let Err(err) = conn.run_message_loop() {
-    //         log::error!("Failed to process xcb event: {:?}", err);
-    //     };
-    // });
+    // & in French
+    simulator.simulate_keycode(10, true);
+    simulator.simulate_keycode(10, false);
 
-    // todo:
-    // keyevent(keycode, char);
-    // test char event map
-    // test modifiers for altgr, to string
+    simulator.simulate_char_without_modifiers('1', true);
+    simulator.simulate_char_without_modifiers('1', false);
+    simulator.simulate_char_without_modifiers('!', true);
+    simulator.simulate_char_without_modifiers('!', false);
+
+    simulator.simulate_char_without_modifiers('¹', true);
+    simulator.simulate_char_without_modifiers('¹', false);
+    simulator.simulate_char_without_modifiers('¡', true);
+    simulator.simulate_char_without_modifiers('¡', false);
 
     Ok(())
 }
