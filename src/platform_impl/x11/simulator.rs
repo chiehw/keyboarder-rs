@@ -3,7 +3,7 @@ use super::keyboard::MOD_NAME_ISO_LEVEL3_SHIFT;
 
 use crate::connection::ConnectionOps;
 use crate::simulate::{Simulate, SENDER};
-use crate::types::{KeyCode, KeyEvent, Modifiers};
+use crate::types::{KeyCode, KeyEvent, Modifiers, ServerMode};
 
 use crate::types::PhysKeyCode;
 use anyhow::{ensure, Context, Ok};
@@ -26,10 +26,11 @@ pub struct XSimulator {
     device_id: u8,
     pressed_key: HashSet<u8>,
     root: xcb::x::Window,
+    pub mode: Option<ServerMode>,
 }
 
 impl Simulate for XSimulator {
-    fn spawn_server() -> anyhow::Result<JoinHandle<()>> {
+    fn spawn_server(mode: ServerMode) -> anyhow::Result<JoinHandle<()>> {
         let pipe = Pipe::new()?;
 
         let mut write_fd = pipe.write;
@@ -42,7 +43,7 @@ impl Simulate for XSimulator {
 
         Ok({
             std::thread::spawn(move || {
-                let conn = XConnection::with_simulator()
+                let conn = XConnection::with_simulator(mode)
                     .context("Failed to init Connection")
                     .unwrap();
 
@@ -112,6 +113,12 @@ impl Simulate for XSimulator {
             log::error!("{err:#}")
         };
     }
+
+    fn simulate_server(&mut self, key_event: &KeyEvent) {
+        if let Err(err) = self.process_server_event_impl(key_event) {
+            log::error!("{err:#}")
+        };
+    }
 }
 
 impl XSimulator {
@@ -124,6 +131,7 @@ impl XSimulator {
             pressed_key: HashSet::new(),
             root,
             device_id,
+            mode: None,
         }
     }
 
@@ -191,30 +199,38 @@ impl XSimulator {
         res
     }
 
-    fn process_key_event_impl(&mut self, key_event: &KeyEvent) -> anyhow::Result<()> {
-        let current_modifiers = self.get_current_modifiers();
-        dbg!(current_modifiers);
+    fn process_server_event_impl(&mut self, key_event: &KeyEvent) -> anyhow::Result<()> {
+        let mode = if let Some(mode) = &self.mode {
+            mode
+        } else {
+            anyhow::bail!("Can't find simulate mode");
+        };
 
-        match &key_event.raw_event {
-            Some(raw_event) => {
-                let key_event_vec = current_modifiers.diff_modifiers(&raw_event.modifiers);
-                // if !raw_event.key.is_modifier(){
-                //     self.prepare_pressed_keys(&key_event_vec)?;
-                // };
-
-                self.simulate_phys(raw_event.key, raw_event.press)
-            }
-            None => {
-                let key_event_vec = current_modifiers.diff_modifiers(&key_event.modifiers);
-                self.prepare_pressed_keys(&key_event_vec)?;
-                match key_event.key {
-                    KeyCode::RawCode(keycode) => self.simulate_keycode(keycode, key_event.press),
-                    KeyCode::KeySym(keysym) => self.simulate_keysym(keysym, key_event.press),
-                    KeyCode::Physical(phys) => self.simulate_phys(phys, key_event.press),
-
-                    _ => {}
+        match mode {
+            ServerMode::Map => {
+                let press = key_event.press;
+                if let Some(raw_event) = key_event.raw_event {
+                    self.simulate_phys(raw_event.key, press)
                 }
             }
+            ServerMode::Translate => {
+                let key_event_vec = self
+                    .get_current_modifiers()
+                    .diff_modifiers(&key_event.modifiers);
+            }
+            ServerMode::Auto => todo!(),
+        }
+
+        Ok(())
+    }
+
+    fn process_key_event_impl(&mut self, key_event: &KeyEvent) -> anyhow::Result<()> {
+        match key_event.key {
+            KeyCode::RawCode(keycode) => self.simulate_keycode(keycode, key_event.press),
+            KeyCode::KeySym(keysym) => self.simulate_keysym(keysym, key_event.press),
+            KeyCode::Physical(phys) => self.simulate_phys(phys, key_event.press),
+
+            _ => {}
         }
 
         Ok(())

@@ -76,7 +76,7 @@ impl XConnection {
                         anyhow::ensure!(num != buf.len(), "buf is too small");
 
                         let key_event = KeyEventBin::new(buf).to_key_event()?;
-                        self.process_key_event_log(&key_event);
+                        self.process_server_event_log(&key_event);
                     }
                     TOK_XKB => {
                         self.process_queued_xcb_log();
@@ -120,8 +120,8 @@ impl XConnection {
             .with_context(|| format!("{req:#?}"))
     }
 
-    fn process_key_event_log(&self, key_event: &KeyEvent) {
-        if let Err(err) = self.process_key_event(key_event) {
+    fn process_server_event_log(&self, key_event: &KeyEvent) {
+        if let Err(err) = self.process_server_event(key_event) {
             log::error!("{err:#}");
         }
     }
@@ -132,9 +132,9 @@ impl XConnection {
         }
     }
 
-    fn process_key_event(&self, key_event: &KeyEvent) -> anyhow::Result<()> {
+    fn process_server_event(&self, key_event: &KeyEvent) -> anyhow::Result<()> {
         if let Some(simulator) = self.simulator.borrow_mut().as_mut() {
-            simulator.simulate_key_event(key_event);
+            simulator.simulate_server(key_event);
         }
 
         Ok(())
