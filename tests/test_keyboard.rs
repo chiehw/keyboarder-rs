@@ -1,9 +1,41 @@
+use std::borrow::Borrow;
+
 use keyboarder::{
     connection::ConnectionOps,
     platform_impl::{Connection, Simulator},
     simulate::Simulate,
-    types::{Modifiers, PhysKeyCode},
+    types::{KeyCode, KeyEvent, Modifiers, PhysKeyCode},
 };
+
+#[test]
+fn test_kbd_char_keysym() {
+    env_logger::init();
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = Connection::init().unwrap();
+    let mut simulator = Simulator::new(&conn);
+
+    let state = conn.keyboard.state.borrow();
+    let chr = '1' as u32;
+    dbg!(chr);
+    // 65106 -> "^": translate dead key to char.
+    let res = unsafe { xkbcommon::xkb::ffi::xkb_keysym_to_utf32(chr) };
+    dbg!(res);
+}
+
+#[test]
+fn test_kbd_keysym_map() {
+    env_logger::init();
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = Connection::init().unwrap();
+
+    let kbd = conn.keyboard.borrow();
+    let keysym_map = kbd.keysym_map.borrow();
+
+    let keycode = keysym_map.get(&49);
+    assert_eq!(keycode, Some(&10));
+}
 
 #[test]
 fn test_keyboard_when_simulate() {
@@ -46,4 +78,24 @@ fn test_keyboard_altgr_when_simulate() {
 
     simulator.simulate_phys(PhysKeyCode::KeyQ, false);
     simulator.simulate_phys(PhysKeyCode::AltRight, false);
+}
+
+#[test]
+fn test_keyboard_event_by_char() {
+    env_logger::init();
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = Connection::init().unwrap();
+
+    let kbd = conn.keyboard.borrow();
+
+    assert_eq!(
+        Some(KeyEvent {
+            key: KeyCode::RawCode(10,),
+            press: false,
+            modifiers: Modifiers::SHIFT,
+            raw_event: None,
+        }),
+        kbd.get_key_event_by_char('!')
+    );
 }
