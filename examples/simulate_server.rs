@@ -1,7 +1,7 @@
 use keyboarder::{
     platform_impl::Simulator,
     simulate::Simulate,
-    types::{KeyCode, KeyEvent, Modifiers, PhysKeyCode},
+    types::{KeyCode, KeyEvent, Modifiers, PhysKeyCode, ServerMode},
 };
 
 fn main() -> anyhow::Result<()> {
@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
         raw_event: None,
     };
 
-    let handle = Simulator::spawn_server()?;
+    let handle = Simulator::spawn_server(ServerMode::Map)?;
     Simulator::event_to_server(&key_event)?;
 
     handle.join().unwrap();
