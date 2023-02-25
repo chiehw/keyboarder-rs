@@ -159,29 +159,18 @@ impl XKeyboard {
     /// Warning: Can't use it in simulate, fake input will not
     pub unsafe fn get_current_modifiers(&self) -> Modifiers {
         let mut res = Modifiers::default();
-
-        if self.mod_is_active(xkb::MOD_NAME_SHIFT) {
-            res |= Modifiers::SHIFT;
-        }
-        if self.mod_is_active(xkb::MOD_NAME_CTRL) {
-            res |= Modifiers::CTRL;
-        }
-        if self.mod_is_active(xkb::MOD_NAME_ALT) {
-            res |= Modifiers::ALT;
-        }
-        if self.mod_is_active(xkb::MOD_NAME_LOGO) {
-            res |= Modifiers::META;
-        }
-
-        if self.mod_is_active(xkb::MOD_NAME_CAPS) {
-            res |= Modifiers::CAPS;
-        }
-        if self.mod_is_active(xkb::MOD_NAME_NUM) {
-            res |= Modifiers::NUM;
-        }
-        // todo: check
-        if self.mod_is_active(MOD_NAME_ISO_LEVEL3_SHIFT) {
-            res |= Modifiers::ALT_GR;
+        for (mod_name, modifier) in [
+            (xkb::MOD_NAME_SHIFT, Modifiers::SHIFT),
+            (xkb::MOD_NAME_CTRL, Modifiers::CTRL),
+            (xkb::MOD_NAME_ALT, Modifiers::ALT),
+            (xkb::MOD_NAME_LOGO, Modifiers::META),
+            (xkb::MOD_NAME_CAPS, Modifiers::CAPS),
+            (xkb::MOD_NAME_NUM, Modifiers::NUM),
+            (MOD_NAME_ISO_LEVEL3_SHIFT, Modifiers::ALT_GR),
+        ] {
+            if self.mod_is_active(mod_name) {
+                res |= modifier;
+            }
         }
         res
     }

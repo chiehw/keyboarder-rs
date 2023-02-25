@@ -172,30 +172,20 @@ impl XSimulator {
         let state = xkb::x11::state_new_from_device(keymap, &conn, device_id.into());
 
         let mut res = Modifiers::default();
-
-        if state.mod_name_is_active(xkb::MOD_NAME_SHIFT, xkb::STATE_MODS_EFFECTIVE) {
-            res |= Modifiers::SHIFT;
+        for (mod_name, modifier) in [
+            (xkb::MOD_NAME_SHIFT, Modifiers::SHIFT),
+            (xkb::MOD_NAME_CTRL, Modifiers::CTRL),
+            (xkb::MOD_NAME_ALT, Modifiers::ALT),
+            (xkb::MOD_NAME_LOGO, Modifiers::META),
+            (xkb::MOD_NAME_CAPS, Modifiers::CAPS),
+            (xkb::MOD_NAME_NUM, Modifiers::NUM),
+            (MOD_NAME_ISO_LEVEL3_SHIFT, Modifiers::ALT_GR),
+        ] {
+            if state.mod_name_is_active(mod_name, xkb::STATE_MODS_EFFECTIVE) {
+                res |= modifier;
+            }
         }
-        if state.mod_name_is_active(xkb::MOD_NAME_CTRL, xkb::STATE_MODS_EFFECTIVE) {
-            res |= Modifiers::CTRL;
-        }
-        if state.mod_name_is_active(xkb::MOD_NAME_ALT, xkb::STATE_MODS_EFFECTIVE) {
-            res |= Modifiers::ALT;
-        }
-        if state.mod_name_is_active(xkb::MOD_NAME_LOGO, xkb::STATE_MODS_EFFECTIVE) {
-            res |= Modifiers::META;
-        }
-
-        if state.mod_name_is_active(xkb::MOD_NAME_CAPS, xkb::STATE_MODS_EFFECTIVE) {
-            res |= Modifiers::CAPS;
-        }
-        if state.mod_name_is_active(xkb::MOD_NAME_NUM, xkb::STATE_MODS_EFFECTIVE) {
-            res |= Modifiers::NUM;
-        }
-
-        if state.mod_name_is_active(MOD_NAME_ISO_LEVEL3_SHIFT, xkb::STATE_MODS_EFFECTIVE) {
-            res |= Modifiers::ALT_GR;
-        }
+        
         res
     }
 
@@ -217,6 +207,13 @@ impl XSimulator {
                 let key_event_vec = self
                     .get_current_modifiers()
                     .diff_modifiers(&key_event.modifiers);
+                if let Some(raw_event) = key_event.raw_event {
+                    // Don't need to sync modifier when press modifiers
+                    if !raw_event.key.is_modifier() {
+                        self.prepare_pressed_keys(&key_event_vec)?;
+                    }
+                    self.simulate_key_event(key_event);
+                }
             }
             ServerMode::Auto => todo!(),
         }
