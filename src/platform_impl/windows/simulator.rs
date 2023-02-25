@@ -1,17 +1,20 @@
 use crate::platform_impl::platform::connection::WinConnection;
 use crate::simulate::Simulate;
+use crate::types::ServerMode;
 use std::rc::Rc;
 
-pub struct WinSimulator {}
+pub struct WinSimulator {
+    pub mode: Option<ServerMode>,
+}
 
 impl WinSimulator {
     pub fn new(_conn: &Rc<WinConnection>) -> WinSimulator {
-        Self {}
+        Self { mode: None }
     }
 }
 
 impl Simulate for WinSimulator {
-    fn spawn_server() -> anyhow::Result<std::thread::JoinHandle<()>> {
+    fn spawn_server(mode: ServerMode) -> anyhow::Result<std::thread::JoinHandle<()>> {
         todo!()
     }
 
@@ -36,6 +39,10 @@ impl Simulate for WinSimulator {
     }
 
     fn simulate_key_event(&mut self, _key_event: &crate::types::KeyEvent) {
+        todo!()
+    }
+
+    fn simulate_server(&mut self, key_event: &crate::types::KeyEvent) {
         todo!()
     }
 }

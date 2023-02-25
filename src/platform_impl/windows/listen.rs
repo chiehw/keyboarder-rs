@@ -173,7 +173,7 @@ impl WinListener {
 
         let is_modifier_only = phys_key.is_modifier();
         let key = if is_modifier_only {
-            Some(phys_key.to_key_code())
+            Some(KeyCode::Physical(phys_key))
         } else {
             if !press && self.dead_pending.is_some() {
                 // Don't care about key-up events while processing dead keys
