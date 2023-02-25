@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     std::env::set_var("DISPLAY", ":0");
 
     let listener = TcpListener::bind("0.0.0.0:7878")?;
-    let _handle = Simulator::spawn_server(ServerMode::Map)?;
+    let _handle = Simulator::spawn_server(ServerMode::Translate)?;
 
     for stream in listener.incoming() {
         let stream: TcpStream = stream.unwrap();
