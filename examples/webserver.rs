@@ -1,4 +1,8 @@
-use keyboarder::{platform_impl::Simulator, simulate::Simulate, types::{KeyEventBin, ServerMode}};
+use keyboarder::{
+    platform_impl::Simulator,
+    simulate::Simulate,
+    types::{KeyEventBin, ServerMode},
+};
 use std::{
     io::{BufReader, Read},
     net::{TcpListener, TcpStream},

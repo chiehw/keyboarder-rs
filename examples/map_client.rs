@@ -1,6 +1,6 @@
 #[cfg(target_os = "windows")]
 use keyboarder::platform_impl::Listener;
-use keyboarder::types::{KeyCode, KeyEvent, Modifiers, PhysKeyCode};
+use keyboarder::types::KeyEvent;
 use std::{io::Write, net::TcpStream};
 
 fn send_key_event(key_event: &KeyEvent) -> anyhow::Result<()> {
@@ -14,7 +14,6 @@ fn send_key_event(key_event: &KeyEvent) -> anyhow::Result<()> {
 
     Ok(())
 }
-
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();

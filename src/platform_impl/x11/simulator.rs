@@ -185,7 +185,7 @@ impl XSimulator {
                 res |= modifier;
             }
         }
-        
+
         res
     }
 
