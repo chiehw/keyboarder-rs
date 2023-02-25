@@ -69,10 +69,11 @@ pub fn build_char_event_map(
 pub struct XKeyboard {
     phys_code_map: RefCell<HashMap<PhysKeyCode, xkb::Keycode>>,
     code_phys_map: RefCell<HashMap<xkb::Keycode, PhysKeyCode>>,
-    keysym_map: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
+    pub keysym_map: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
+    char_keysym: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
     char_event_map: RefCell<HashMap<char, KeyEvent>>,
     unused_keycodes: RefCell<Vec<xkb::Keycode>>,
-    state: RefCell<xkb::State>,
+    pub state: RefCell<xkb::State>,
     pub keymap: RefCell<xkb::Keymap>,
     device_id: u8,
     group_index: RefCell<GroupIndex>,
@@ -94,6 +95,8 @@ impl XKeyboard {
         let state = xkb::x11::state_new_from_device(&keymap, connection, device_id);
         let (code_phys_map, phys_code_map) = build_phys_keycode_map(&keymap);
         let mut keysym_map = HashMap::new();
+        // FIXME: update when switch keyboard
+        let mut char_keysym = HashMap::new();
         let mut unused_keycodes: Vec<xkb::Keycode> = vec![];
 
         let min_keycode = keymap.min_keycode();
@@ -106,6 +109,15 @@ impl XKeyboard {
             } else {
                 keysym_map.insert(keysym, keycode);
             }
+        }
+        for (keysym, _) in &keysym_map {
+            let keysym = keysym.to_owned();
+            let chr = unsafe { xkbcommon::xkb::ffi::xkb_keysym_to_utf32(keysym) };
+            // if keysym == 65106 {
+            //     println!("keysym={:?} => chr={:?}", keysym, chr);
+            // }
+
+            char_keysym.insert(chr, keysym);
         }
 
         let group_index = get_active_group_index(&state, &keymap);
@@ -141,6 +153,7 @@ impl XKeyboard {
             phys_code_map: RefCell::new(phys_code_map),
             code_phys_map: RefCell::new(code_phys_map),
             keysym_map: RefCell::new(keysym_map),
+            char_keysym: RefCell::new(char_keysym),
             char_event_map: RefCell::new(char_event_map),
             unused_keycodes: RefCell::new(unused_keycodes),
             state: RefCell::new(state),

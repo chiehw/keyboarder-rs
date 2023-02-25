@@ -70,15 +70,10 @@ impl Simulate for XSimulator {
         Ok(())
     }
 
-    fn simulate_keycode(&mut self, keycode: u32, press: bool) {
-        if let Err(err) = self.process_keycode_event_impl(keycode, press) {
-            log::error!("{err:#}")
-        };
-    }
-
     fn simulate_keysym(&mut self, keysym: u32, press: bool) {
         let keyboard = &self.conn().keyboard;
         if let Some(keycode) = keyboard.get_keycode_by_keysym(keysym) {
+            log::debug!("simulate keysym {:?} -> {:?}", keysym, press);
             self.simulate_keycode(keycode, press);
         } else {
             log::error!(
@@ -89,8 +84,9 @@ impl Simulate for XSimulator {
         };
     }
 
-    fn simulate_char_without_modifiers(&mut self, chr: char) {
-        if let Err(err) = self.process_char_impl(chr) {
+    fn simulate_char_without_modifiers(&mut self, chr: char, press: bool) {
+        log::debug!("simulate char: {:?}", chr);
+        if let Err(err) = self.process_char_impl(chr, press) {
             log::error!("{err:#}")
         };
     }
@@ -98,6 +94,7 @@ impl Simulate for XSimulator {
     fn simulate_phys(&mut self, phys: PhysKeyCode, press: bool) {
         let keyboard = &self.conn().keyboard;
         if let Some(keycode) = keyboard.get_keycode_by_phys(phys) {
+            log::debug!("simulate phys {:?} -> {:?}", phys, press);
             self.simulate_keycode(keycode, press);
         } else {
             log::error!(
@@ -105,6 +102,12 @@ impl Simulate for XSimulator {
                 phys,
                 keyboard.get_active_layout_name()
             );
+        };
+    }
+
+    fn simulate_keycode(&mut self, keycode: u32, press: bool) {
+        if let Err(err) = self.process_keycode_event_impl(keycode, press) {
+            log::error!("{err:#}")
         };
     }
 
@@ -149,12 +152,21 @@ impl XSimulator {
         Ok(())
     }
 
-    fn process_char_impl(&mut self, chr: char) -> anyhow::Result<()> {
+    fn process_char_impl(&mut self, chr: char, press: bool) -> anyhow::Result<()> {
         let keyboard = &self.conn().keyboard;
 
         let key_event = keyboard.get_key_event_by_char(chr);
-        ensure!(key_event.is_some(), "Not found char `{:?}`", chr);
-        self.process_key_event_impl(&key_event.unwrap())?;
+        if let Some(key_event) = key_event {
+            let cur_modifiers = self.get_current_modifiers();
+            let key_event_vec = cur_modifiers.diff_modifiers(&key_event.modifiers);
+            self.prepare_pressed_keys(&key_event_vec)?;
+
+            if let KeyCode::RawCode(keycode) = key_event.key {
+                self.simulate_keycode(keycode, press);
+            }
+        } else {
+            anyhow::bail!("Not found char `{:?}`", chr);
+        }
 
         Ok(())
     }
@@ -195,24 +207,45 @@ impl XSimulator {
         } else {
             anyhow::bail!("Can't find simulate mode");
         };
+        let conn = self.conn();
+        let press = key_event.press;
 
         match mode {
             ServerMode::Map => {
-                let press = key_event.press;
                 if let Some(raw_event) = key_event.raw_event {
                     self.simulate_phys(raw_event.key, press)
                 }
             }
             ServerMode::Translate => {
-                let key_event_vec = self
-                    .get_current_modifiers()
-                    .diff_modifiers(&key_event.modifiers);
+                let kbd = conn.keyboard.borrow();
+
+                let cur_modifiers = self.get_current_modifiers();
+                let key_event_vec = cur_modifiers.diff_modifiers(&key_event.modifiers);
                 if let Some(raw_event) = key_event.raw_event {
                     // Don't need to sync modifier when press modifiers
                     if !raw_event.key.is_modifier() {
                         self.prepare_pressed_keys(&key_event_vec)?;
                     }
-                    self.simulate_key_event(key_event);
+
+                    match key_event.key {
+                        KeyCode::Char(chr) => {
+                            if kbd.keysym_map.borrow().contains_key(&(chr as u32)) {
+                                self.simulate_keysym(chr as u32, press)
+                            } else if !cur_modifiers.is_shortcut() {
+                                self.simulate_char_without_modifiers(chr, press);
+                            } else if let Some(raw_event) = key_event.raw_event {
+                                self.simulate_phys(raw_event.key, press)
+                            }
+                        }
+                        KeyCode::Physical(phys) => self.simulate_phys(phys, press),
+                        KeyCode::RawCode(_) => {
+                            log::error!("Unexcept key event: {:?}", key_event);
+                            if let Some(raw_event) = key_event.raw_event {
+                                self.simulate_phys(raw_event.key, press)
+                            }
+                        }
+                        _ => {}
+                    }
                 }
             }
             ServerMode::Auto => todo!(),
@@ -264,8 +297,8 @@ impl XSimulator {
             deviceid: self.device_id,
         });
         conn.flush().context("flushing pending requests")?;
-        log::debug!(
-            "simualte keycode {:?}({:?}) -> {:?}",
+        log::trace!(
+            "simulate keycode {:?}({:?}) -> {:?}",
             keycode,
             conn.keyboard.get_phys_by_keycode(keycode.into()).unwrap(),
             press

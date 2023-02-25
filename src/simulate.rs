@@ -18,7 +18,7 @@ pub trait Simulate {
 
     fn simulate_keysym(&mut self, keysym: u32, press: bool);
 
-    fn simulate_char_without_modifiers(&mut self, chr: char);
+    fn simulate_char_without_modifiers(&mut self, chr: char, press: bool);
 
     fn simulate_phys(&mut self, phys: PhysKeyCode, press: bool);
 

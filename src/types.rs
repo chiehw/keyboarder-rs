@@ -439,8 +439,6 @@ impl Modifiers {
         let mut key_event_vec: Vec<KeyEvent> = vec![];
         let target_modifiers = modifiers.trans_positional_mods();
 
-        dbg!(&target_modifiers);
-
         for pair in &[
             (Modifiers::CAPS, PhysKeyCode::CapsLock),
             (Modifiers::NUM, PhysKeyCode::NumLock),
@@ -474,6 +472,23 @@ impl Modifiers {
         }
 
         key_event_vec
+    }
+
+    pub fn is_shortcut(&self) -> bool {
+        for mods in [
+            Modifiers::CTRL,
+            Modifiers::ALT,
+            Modifiers::LEFT_CTRL,
+            Modifiers::LEFT_ALT,
+            Modifiers::RIGHT_CTRL,
+            Modifiers::RIGHT_ALT,
+            Modifiers::META,
+        ] {
+            if self.contains(mods) {
+                return true;
+            }
+        }
+        false
     }
 }
 
