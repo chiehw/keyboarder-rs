@@ -121,7 +121,7 @@ pub fn build_phys_keycode_map(
         ("DOWN", PhysKeyCode::DownArrow),
         ("RGHT", PhysKeyCode::RightArrow),
         ("KP0", PhysKeyCode::Kp0),
-        ("KPDL", PhysKeyCode::KpDelete),
+        ("DELE", PhysKeyCode::KpDelete),
         ("LWIN", PhysKeyCode::MetaLeft),
         ("RWIN", PhysKeyCode::MetaRight),
         ("MUTE", PhysKeyCode::VolumeMute),
