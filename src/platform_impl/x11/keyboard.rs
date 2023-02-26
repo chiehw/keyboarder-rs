@@ -44,7 +44,7 @@ pub fn build_char_event_map(
     // todo
     for keycode in min_keycode..=max_keycode {
         let num_level = keymap.num_levels_for_key(keycode, layout);
-        for level in 0..num_level {
+        for level in (0..num_level).rev() {
             let keysyms = keymap.key_get_syms_by_level(keycode, layout, level);
             if keysyms.is_empty() {
                 continue;
