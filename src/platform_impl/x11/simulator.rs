@@ -165,7 +165,7 @@ impl XSimulator {
             let cur_modifiers = self.get_current_modifiers();
             let key_event_vec = cur_modifiers.diff_modifiers(&target_modifiers);
             self.prepare_pressed_keys(&key_event_vec)?;
-            
+
             if let KeyCode::RawCode(keycode) = char_key_event.key {
                 self.simulate_keycode(keycode, true);
             }

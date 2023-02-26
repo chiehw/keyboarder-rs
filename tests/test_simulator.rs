@@ -102,8 +102,8 @@ fn test_simulate_get_modifier() {
     std::env::set_var("DISPLAY", ":0");
 
     let conn = Connection::init().unwrap();
-    let mut simulator = Simulator::new(&conn);
-   // simulator.simulate_phys(PhysKeyCode::ControlLeft, true);
+    let simulator = Simulator::new(&conn);
+    // simulator.simulate_phys(PhysKeyCode::ControlLeft, true);
     //assert_eq!(Modifiers::CTRL, simulator.get_current_modifiers());
     //simulator.simulate_phys(PhysKeyCode::ControlLeft, false);
 
