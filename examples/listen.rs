@@ -3,7 +3,7 @@ use keyboarder::platform_impl::Listener;
 use keyboarder::types::KeyEvent;
 
 fn dbg_event(key_event: &KeyEvent) -> anyhow::Result<()> {
-    dbg!(key_event);
+    log::debug!("key_event: {:?}", key_event);
     Ok(())
 }
 

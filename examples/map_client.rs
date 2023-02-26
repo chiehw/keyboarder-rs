@@ -4,6 +4,8 @@ use keyboarder::types::KeyEvent;
 use std::{io::Write, net::TcpStream};
 
 fn send_key_event(key_event: &KeyEvent) -> anyhow::Result<()> {
+    log::debug!("key_event: {:?}", key_event);
+    
     let mut stream = TcpStream::connect(("192.168.59.128", 7878))?;
     let raw_data = key_event.to_u8_vec()?;
 
