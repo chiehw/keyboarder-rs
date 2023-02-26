@@ -439,11 +439,10 @@ impl Modifiers {
         let mut key_event_vec: Vec<KeyEvent> = vec![];
         let target_modifiers = modifiers;
 
-        for pair in &[
+        for (modifier, phys) in [
             (Modifiers::CAPS, PhysKeyCode::CapsLock),
             (Modifiers::NUM, PhysKeyCode::NumLock),
         ] {
-            let (modifier, phys) = pair.to_owned();
             let pressed = target_modifiers.contains(modifier);
 
             if pressed && !self.contains(modifier) || !pressed && self.contains(modifier) {
@@ -453,23 +452,46 @@ impl Modifiers {
             continue;
         }
 
-        for pair in &[
-            (Modifiers::SHIFT, PhysKeyCode::ShiftLeft),
-            (Modifiers::CTRL, PhysKeyCode::ControlLeft),
-            (Modifiers::ALT, PhysKeyCode::AltLeft),
-            (Modifiers::META, PhysKeyCode::MetaLeft),
-            (Modifiers::ALT_GR, PhysKeyCode::AltRight),
+        for (modifier, left_phys, right_phys) in [
+            (
+                Modifiers::SHIFT,
+                PhysKeyCode::ShiftLeft,
+                PhysKeyCode::ShiftRight,
+            ),
+            (
+                Modifiers::CTRL,
+                PhysKeyCode::ControlLeft,
+                PhysKeyCode::ControlRight,
+            ),
+            (Modifiers::ALT, PhysKeyCode::AltLeft, PhysKeyCode::AltRight),
+            (
+                Modifiers::META,
+                PhysKeyCode::MetaLeft,
+                PhysKeyCode::MetaRight,
+            ),
+            (
+                Modifiers::ALT_GR,
+                PhysKeyCode::AltRight,
+                PhysKeyCode::AltRight,
+            ),
         ] {
-            let (modifier, phys) = pair.to_owned();
             let pressed = target_modifiers.contains(modifier);
 
             if !pressed && self.contains(modifier) {
-                key_event_vec.push(KeyEvent::with_phys(phys, false))
+                key_event_vec.push(KeyEvent::with_phys(left_phys, false));
+                key_event_vec.push(KeyEvent::with_phys(right_phys, false));
             }
             if pressed && !self.contains(modifier) {
-                key_event_vec.push(KeyEvent::with_phys(phys, true))
+                key_event_vec.push(KeyEvent::with_phys(left_phys, true))
             }
         }
+
+        log::trace!(
+            "cur_modifier={:?}, target_modifier={:?} => key_event_vec={:?}",
+            self,
+            target_modifiers,
+            key_event_vec
+        );
 
         key_event_vec
     }
