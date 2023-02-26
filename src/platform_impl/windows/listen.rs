@@ -122,7 +122,15 @@ impl WinListener {
         let (lparam, wparam) = (proc_event.lparam, proc_event.wparam);
 
         let vk_code = Self::get_vkcode(lparam);
-        let scan = Self::get_scan(lparam);
+        let scan = {
+            let scan = Self::get_scan(lparam);
+            //  FIXME: it will be treated as LeftControl. Actually 0x001D is LeftControl.
+            // <https://github.com/rustdesk/rustdesk/issues/1371>
+            if scan == SC_FAKE_LCTRL {
+                return None;
+            };
+            scan
+        };
         let press = Self::is_press(wparam);
         let phys_key = match self.keyboard.scan_to_phys(scan) {
             Some(phys) => phys,
@@ -138,12 +146,6 @@ impl WinListener {
             }
         };
 
-        //  FIXME: it will be treated as LeftControl. Actually 0x001D is LeftControl.
-        // <https://github.com/rustdesk/rustdesk/issues/1371>
-        if scan == SC_FAKE_LCTRL {
-            return None;
-        }
-
         // Avoid to repeat process modifier key(long press)
         if phys_key.is_modifier() {
             if self.is_long_press(phys_key, press) {
@@ -156,11 +158,16 @@ impl WinListener {
         unsafe { GetKeyboardState(key_states.as_mut_ptr()) };
 
         let mut modifiers = self.keyboard.get_current_modifiers();
-        if self.keyboard.has_alt_gr()
-            && modifiers.contains(Modifiers::LEFT_CTRL | Modifiers::RIGHT_ALT)
-        {
-            modifiers = modifiers - Modifiers::LEFT_CTRL - Modifiers::RIGHT_ALT;
-            modifiers |= Modifiers::ALT_GR;
+        if self.keyboard.has_alt_gr() {
+            // AltGr is used to generate char and does not need to generate events.
+            if phys_key == PhysKeyCode::AltRight {
+                log::trace!("altgr -> {}", press);
+                return None;
+            }
+            if modifiers.contains(Modifiers::LEFT_CTRL | Modifiers::RIGHT_ALT) {
+                modifiers = modifiers - Modifiers::LEFT_CTRL - Modifiers::RIGHT_ALT;
+                modifiers |= Modifiers::ALT_GR;
+            }
         }
 
         let raw_key_event = RawKeyEvent {
@@ -246,7 +253,7 @@ impl WinListener {
                             phys_key,
                             wparam
                         );
-                        Some(phys_key.to_key_code())
+                        Some(KeyCode::Physical(phys_key))
                     }
                     _ => {
                         // dead key: if our dead key mapping in KeyboardLayoutInfo was
@@ -274,13 +281,22 @@ impl WinListener {
         };
 
         key.map(|k| {
-            KeyEvent {
-                key: k,
+            let key_event = KeyEvent {
+                key: k.clone(),
                 press,
                 modifiers,
                 raw_event: Some(raw_key_event),
             }
-            .normalize_ctrl()
+            .normalize_ctrl();
+            log::trace!(
+                "{:?} => press={}, modifiers={:?}, raw_event={:?}",
+                k,
+                press,
+                modifiers,
+                &raw_key_event
+            );
+
+            key_event
         })
     }
 
