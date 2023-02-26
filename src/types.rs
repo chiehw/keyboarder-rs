@@ -420,11 +420,12 @@ impl Modifiers {
             (Self::SHIFT, (Self::LEFT_SHIFT, Self::RIGHT_SHIFT)),
         ] {
             if self.contains(left_mod) || self.contains(right_mod) {
+                dbg!(m);
                 modifiers = modifiers - left_mod - right_mod;
                 modifiers |= m;
             }
         }
-        self
+        modifiers
     }
 
     /// todo!: return extra_modifiers, missing_modifiers
@@ -437,7 +438,7 @@ impl Modifiers {
     /// compare it with the local modifiers.
     pub fn diff_modifiers(&self, modifiers: &Modifiers) -> Vec<KeyEvent> {
         let mut key_event_vec: Vec<KeyEvent> = vec![];
-        let target_modifiers = modifiers.trans_positional_mods();
+        let target_modifiers = modifiers;
 
         for pair in &[
             (Modifiers::CAPS, PhysKeyCode::CapsLock),

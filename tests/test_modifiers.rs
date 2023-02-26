@@ -30,3 +30,11 @@ fn test_diff_mod() {
         },]
     );
 }
+#[test]
+fn test_trans_mod() {
+    let modifiers = Modifiers::LEFT_CTRL;
+
+    let v = modifiers.trans_positional_mods();
+
+    assert_eq!(v, Modifiers::CTRL);
+}
