@@ -161,11 +161,11 @@ impl WinListener {
         if self.keyboard.has_alt_gr() {
             // AltGr is used to generate char and does not need to generate events.
             if phys_key == PhysKeyCode::AltRight {
-                log::trace!("altgr -> {}", press);
+                log::trace!("KeyCode=AltGr => {}", press);
                 return None;
             }
-            if modifiers.contains(Modifiers::LEFT_CTRL | Modifiers::RIGHT_ALT) {
-                modifiers = modifiers - Modifiers::LEFT_CTRL - Modifiers::RIGHT_ALT;
+            if modifiers.contains(Modifiers::RIGHT_ALT) {
+                modifiers -= Modifiers::RIGHT_ALT;
                 modifiers |= Modifiers::ALT_GR;
             }
         }
@@ -280,24 +280,32 @@ impl WinListener {
             }
         };
 
-        key.map(|k| {
+        if let Some(key) = key {
+            if !matches!(key, KeyCode::Char(_)) && modifiers.contains(Modifiers::ALT_GR) {
+                log::warn!("Failed to get char: {:?}", &raw_key_event);
+                return None;
+            };
             let key_event = KeyEvent {
-                key: k.clone(),
+                key: key.clone(),
                 press,
-                modifiers,
+                // Don't send AltGr to remote, Maybe the remote
+                // machine doesn't have altgr(US keyboard for linux).
+                modifiers: modifiers - Modifiers::ALT_GR,
                 raw_event: Some(raw_key_event),
             }
             .normalize_ctrl();
             log::trace!(
                 "{:?} => press={}, modifiers={:?}, raw_event={:?}",
-                k,
+                key,
                 press,
                 modifiers,
                 &raw_key_event
             );
 
-            key_event
-        })
+            Some(key_event)
+        } else {
+            None
+        }
     }
 
     pub fn update_modifiers_map(&self, phys: PhysKeyCode, press: bool) {
