@@ -88,9 +88,9 @@ impl Simulate for XSimulator {
         };
     }
     // FIXME: Can't hold char key, may be just click.
-    fn simulate_char_without_modifiers(&mut self, chr: char, press: bool) {
-        log::debug!("simulate char: {:?} => {:?}", chr, press);
-        if let Err(err) = self.process_char_impl(chr, press) {
+    fn simulate_char_without_modifiers(&mut self, chr: char) {
+        log::debug!("simulate char: {:?} ", chr);
+        if let Err(err) = self.process_char_impl(chr) {
             log::error!("{err:#}")
         };
     }
@@ -156,17 +156,21 @@ impl XSimulator {
         Ok(())
     }
 
-    fn process_char_impl(&mut self, chr: char, press: bool) -> anyhow::Result<()> {
+    fn process_char_impl(&mut self, chr: char) -> anyhow::Result<()> {
         let keyboard = &self.conn().keyboard;
 
         let char_key_event = keyboard.get_key_event_by_char(chr);
         if let Some(char_key_event) = char_key_event {
+            let target_modifiers = char_key_event.modifiers;
             let cur_modifiers = self.get_current_modifiers();
-            let key_event_vec = cur_modifiers.diff_modifiers(&char_key_event.modifiers);
+            let key_event_vec = cur_modifiers.diff_modifiers(&target_modifiers);
             self.prepare_pressed_keys(&key_event_vec)?;
-
+            
             if let KeyCode::RawCode(keycode) = char_key_event.key {
-                self.simulate_keycode(keycode, press);
+                self.simulate_keycode(keycode, true);
+            }
+            if let KeyCode::RawCode(keycode) = char_key_event.key {
+                self.simulate_keycode(keycode, false);
             }
         } else {
             anyhow::bail!("Not found char `{:?}`", chr);
@@ -225,23 +229,22 @@ impl XSimulator {
 
                 let cur_modifiers = self.get_current_modifiers();
                 let target_modifers = key_event.modifiers.trans_positional_mods();
-                let key_event_vec = cur_modifiers.diff_modifiers(&target_modifers);
 
                 match key_event.key {
                     KeyCode::Char(chr) => {
-                        if !target_modifers.is_shortcut() && press {
-                            self.simulate_char_without_modifiers(chr, true);
-                            self.simulate_char_without_modifiers(chr, false);
-                        } else if kbd.keysym_map.borrow().contains_key(&(chr as u32)) && press {
+                        if !press {
+                            return Ok(());
+                        }
+                        if !target_modifers.is_shortcut() {
+                            self.simulate_char_without_modifiers(chr);
+                        } else if kbd.keysym_map.borrow().contains_key(&(chr as u32)) {
+                            let key_event_vec = cur_modifiers.diff_modifiers(&target_modifers);
                             self.prepare_pressed_keys(&key_event_vec)?;
 
                             self.simulate_keysym(chr as u32, true);
                             self.simulate_keysym(chr as u32, false);
-                        } else if let Some(raw_event) = key_event.raw_event {
-                            if press {
-                                self.prepare_pressed_keys(&key_event_vec)?;
-                            }
-                            self.simulate_phys(raw_event.key, press)
+                        } else {
+                            log::error!("Failed to simulate char: {:?}", chr);
                         }
                     }
                     KeyCode::Physical(phys) => self.simulate_phys(phys, press),
