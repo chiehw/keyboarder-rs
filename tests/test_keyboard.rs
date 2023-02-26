@@ -118,3 +118,31 @@ fn test_keyboard_keycode() {
     let code = kbd.get_keycode_by_phys(PhysKeyCode::KpDelete);
     assert_eq!(code, Some(119))
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_keyboard_keysym_map() {
+    env_logger::init();
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = Connection::init().unwrap();
+
+    let kbd = conn.keyboard.borrow();
+    for keycode in 8..255 {
+        let keysym = kbd.state.borrow().key_get_one_sym(keycode);
+        println!("keycode={:?} => keysy,={:?}", keycode, keysym);
+    }
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_keyboard_char_map() {
+    env_logger::init();
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = Connection::init().unwrap();
+
+    let kbd = conn.keyboard.borrow();
+    let evt_vec = kbd.borrow().get_key_event_by_char('-');
+    dbg!(evt_vec);
+}

@@ -15,6 +15,7 @@ fn test_deadkey_ampersand() {
     let mut simulator = Simulator::new(&conn);
 
     // dead_circumflex(^) in French
+    // XK_acircumflex = 0x00e2 + a
     simulator.simulate_keysym(65106, true); // &
     simulator.simulate_keysym(65106, false); // &
 }
