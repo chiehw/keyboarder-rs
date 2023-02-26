@@ -81,3 +81,36 @@ fn test_char_by_phys() {
         raw_event: None,
     });
 }
+
+#[test]
+fn test_keysym() {
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = Connection::init().unwrap();
+
+    let mut simulator = Simulator::new(&conn);
+
+    // & in French, 1 in US
+    simulator.simulate_phys(PhysKeyCode::ControlLeft, true);
+    simulator.simulate_keysym(97, true);
+    simulator.simulate_keysym(97, false);
+    simulator.simulate_phys(PhysKeyCode::ControlLeft, false);
+}
+
+
+#[test]
+fn test_simulate_get_modifier() {
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = Connection::init().unwrap();
+    let mut simulator = Simulator::new(&conn);
+    simulator.simulate_phys(PhysKeyCode::ControlLeft, true);
+    assert_eq!(Modifiers::CTRL, simulator.get_current_modifiers());
+    simulator.simulate_phys(PhysKeyCode::ControlLeft, false);
+
+    simulator.simulate_phys(PhysKeyCode::ControlLeft, true);
+    dbg!(simulator.get_current_modifiers());
+    
+    
+
+}

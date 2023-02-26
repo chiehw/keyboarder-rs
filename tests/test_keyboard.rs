@@ -8,6 +8,7 @@ use keyboarder::{
 };
 
 #[test]
+#[cfg(target_os = "linux")]
 fn test_kbd_char_keysym() {
     env_logger::init();
     std::env::set_var("DISPLAY", ":0");
@@ -24,6 +25,7 @@ fn test_kbd_char_keysym() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn test_kbd_keysym_map() {
     env_logger::init();
     std::env::set_var("DISPLAY", ":0");
@@ -38,6 +40,7 @@ fn test_kbd_keysym_map() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn test_keyboard_when_simulate() {
     env_logger::init();
     std::env::set_var("DISPLAY", ":0");
@@ -63,6 +66,7 @@ fn test_keyboard_when_simulate() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn test_keyboard_altgr_when_simulate() {
     // test it in French keyboard.
     env_logger::init();
@@ -81,6 +85,7 @@ fn test_keyboard_altgr_when_simulate() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn test_keyboard_event_by_char() {
     env_logger::init();
     std::env::set_var("DISPLAY", ":0");
@@ -98,4 +103,18 @@ fn test_keyboard_event_by_char() {
         }),
         kbd.get_key_event_by_char('!')
     );
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_keyboard_keycode() {
+    env_logger::init();
+    std::env::set_var("DISPLAY", ":0");
+
+    let conn = Connection::init().unwrap();
+
+    let kbd = conn.keyboard.borrow();
+
+    let code = kbd.get_keycode_by_phys(PhysKeyCode::KpDelete);
+    assert_eq!(code, Some(119))
 }
