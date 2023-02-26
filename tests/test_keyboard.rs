@@ -14,9 +14,9 @@ fn test_kbd_char_keysym() {
     std::env::set_var("DISPLAY", ":0");
 
     let conn = Connection::init().unwrap();
-    let mut simulator = Simulator::new(&conn);
+    let _simulator = Simulator::new(&conn);
 
-    let state = conn.keyboard.state.borrow();
+    let _state = conn.keyboard.state.borrow();
     let chr = '1' as u32;
     dbg!(chr);
     // 65106 -> "^": translate dead key to char.

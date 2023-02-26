@@ -234,7 +234,7 @@ impl XSimulator {
                             self.simulate_char_without_modifiers(chr, false);
                         } else if kbd.keysym_map.borrow().contains_key(&(chr as u32)) && press {
                             self.prepare_pressed_keys(&key_event_vec)?;
-                            
+
                             self.simulate_keysym(chr as u32, true);
                             self.simulate_keysym(chr as u32, false);
                         } else if let Some(raw_event) = key_event.raw_event {

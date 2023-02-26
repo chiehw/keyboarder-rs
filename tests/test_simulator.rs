@@ -97,7 +97,6 @@ fn test_keysym() {
     simulator.simulate_phys(PhysKeyCode::ControlLeft, false);
 }
 
-
 #[test]
 fn test_simulate_get_modifier() {
     std::env::set_var("DISPLAY", ":0");
@@ -110,7 +109,4 @@ fn test_simulate_get_modifier() {
 
     simulator.simulate_phys(PhysKeyCode::ControlLeft, true);
     dbg!(simulator.get_current_modifiers());
-    
-    
-
 }
