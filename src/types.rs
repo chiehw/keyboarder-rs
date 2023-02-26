@@ -420,7 +420,6 @@ impl Modifiers {
             (Self::SHIFT, (Self::LEFT_SHIFT, Self::RIGHT_SHIFT)),
         ] {
             if self.contains(left_mod) || self.contains(right_mod) {
-                dbg!(m);
                 modifiers = modifiers - left_mod - right_mod;
                 modifiers |= m;
             }
