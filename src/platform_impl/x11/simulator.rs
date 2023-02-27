@@ -4,7 +4,7 @@ use super::keyboard::MOD_NAME_ISO_LEVEL3_SHIFT;
 use crate::connection::ConnectionOps;
 use crate::keysyms;
 use crate::simulate::{Simulate, SENDER};
-use crate::types::{KeyCode, KeyEvent, Modifiers, ServerMode};
+use crate::types::{KeyCode, KeyEvent, Modifiers, ServerMode, SimEvent};
 
 use crate::types::PhysKeyCode;
 use anyhow::{ensure, Context};
@@ -59,12 +59,12 @@ impl Simulate for XSimulator {
         })
     }
 
-    fn event_to_server(key_event: &KeyEvent) -> anyhow::Result<()> {
+    fn event_to_server(event: &SimEvent) -> anyhow::Result<()> {
         let mut binding = SENDER.lock().unwrap();
         let sender = binding.as_mut();
 
         if let Some(sender) = sender {
-            let buf = key_event.to_u8_vec()?;
+            let buf: Vec<u8> = event.clone().try_into()?;
             let size = sender.write(&buf)?;
             if size != buf.len() {
                 log::error!("Can't write key event");
@@ -130,6 +130,7 @@ impl Simulate for XSimulator {
 
     fn release_modifiers(&self) {
         let keyboard = &self.conn().keyboard;
+        log::info!("Release all modifiers");
         for phys in [
             PhysKeyCode::ShiftLeft,
             PhysKeyCode::ShiftRight,
@@ -185,7 +186,8 @@ impl XSimulator {
     fn process_char_impl(&mut self, chr: char) -> anyhow::Result<()> {
         let keysym = keysyms::char_to_keysym(chr);
 
-        let keyboard = &self.conn().keyboard;
+        let conn = &self.conn();
+        let keyboard = &conn.keyboard;
         let char_key_event = keyboard.get_key_event_by_keysym(keysym);
 
         if let Some(char_key_event) = char_key_event {
@@ -201,7 +203,21 @@ impl XSimulator {
                 self.simulate_keycode(keycode, false);
             }
         } else {
-            anyhow::bail!("Not found char `{:?}`", chr);
+            conn.send_request_no_reply_log(&xcb::x::ChangeKeyboardMapping {
+                keycode_count: 1,
+                first_keycode: 8,
+                keysyms_per_keycode: 1,
+                keysyms: &[keysym],
+            });
+            conn.flush().context("flushing pending requests")?;
+            log::info!(
+                "Remapping keycode=8 => keysym={:?}(chr='{:?}')",
+                keysym,
+                chr
+            );
+
+            self.simulate_keycode(8, true);
+            self.simulate_keycode(8, false);
         }
 
         Ok(())
@@ -367,5 +383,6 @@ impl XSimulator {
 impl Drop for XSimulator {
     fn drop(&mut self) {
         self.release_pressed_keys();
+        self.release_modifiers();
     }
 }
