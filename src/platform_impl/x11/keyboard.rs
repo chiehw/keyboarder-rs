@@ -33,13 +33,13 @@ pub fn level_to_modifiers(level: u32) -> Modifiers {
     }
 }
 
-pub fn build_char_event_map(
+pub fn build_keysym_event_map(
     keymap: &xkb::Keymap,
     min_keycode: u32,
     max_keycode: u32,
     layout: u32,
-) -> HashMap<char, KeyEvent> {
-    let mut map: HashMap<char, KeyEvent> = HashMap::new();
+) -> HashMap<u32, KeyEvent> {
+    let mut map: HashMap<u32, KeyEvent> = HashMap::new();
 
     // todo
     for keycode in min_keycode..=max_keycode {
@@ -50,16 +50,13 @@ pub fn build_char_event_map(
                 continue;
             }
             let keysym = keysyms[0];
-            let char_u32 = xkb::keysym_to_utf32(keysym);
-            if let Some(chr) = char::from_u32(char_u32) {
-                let key_event = KeyEvent {
-                    key: KeyCode::RawCode(keycode),
-                    press: false,
-                    modifiers: level_to_modifiers(level),
-                    raw_event: None,
-                };
-                map.insert(chr, key_event);
-            }
+            let key_event = KeyEvent {
+                key: KeyCode::RawCode(keycode),
+                press: false,
+                modifiers: level_to_modifiers(level),
+                raw_event: None,
+            };
+            map.insert(keysym, key_event);
         }
     }
 
@@ -70,8 +67,8 @@ pub struct XKeyboard {
     phys_code_map: RefCell<HashMap<PhysKeyCode, xkb::Keycode>>,
     code_phys_map: RefCell<HashMap<xkb::Keycode, PhysKeyCode>>,
     pub keysym_map: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
-    char_keysym: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
-    char_event_map: RefCell<HashMap<char, KeyEvent>>,
+    pub char_keysym: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
+    keysym_event_map: RefCell<HashMap<u32, KeyEvent>>,
     unused_keycodes: RefCell<Vec<xkb::Keycode>>,
     pub state: RefCell<xkb::State>,
     pub keymap: RefCell<xkb::Keymap>,
@@ -95,8 +92,8 @@ impl XKeyboard {
         let state = xkb::x11::state_new_from_device(&keymap, connection, device_id);
         let (code_phys_map, phys_code_map) = build_phys_keycode_map(&keymap);
         let mut keysym_map = HashMap::new();
-        // FIXME: update when switch keyboard
-        let mut char_keysym = HashMap::new();
+         // FIXME: update when switch keyboard
+         let mut char_keysym = HashMap::new();
         let mut unused_keycodes: Vec<xkb::Keycode> = vec![];
 
         let min_keycode = keymap.min_keycode();
@@ -146,15 +143,15 @@ impl XKeyboard {
             }))?;
         }
 
-        let char_event_map: HashMap<char, KeyEvent> =
-            build_char_event_map(&keymap, min_keycode, max_keycode, group_index.into());
+        let keysym_event_map: HashMap<u32, KeyEvent> =
+            build_keysym_event_map(&keymap, min_keycode, max_keycode, group_index.into());
 
         Ok(Self {
             phys_code_map: RefCell::new(phys_code_map),
             code_phys_map: RefCell::new(code_phys_map),
             keysym_map: RefCell::new(keysym_map),
             char_keysym: RefCell::new(char_keysym),
-            char_event_map: RefCell::new(char_event_map),
+            keysym_event_map: RefCell::new(keysym_event_map),
             unused_keycodes: RefCell::new(unused_keycodes),
             state: RefCell::new(state),
             keymap: RefCell::new(keymap),
@@ -219,12 +216,12 @@ impl XKeyboard {
         }
     }
 
-    pub fn get_key_event_by_char(&self, chr: char) -> Option<KeyEvent> {
-        let char_map = self.char_event_map.borrow();
-        if !char_map.contains_key(&chr) {
+    pub fn get_key_event_by_keysym(&self, keysym: u32) -> Option<KeyEvent> {
+        let keysym_map = self.keysym_event_map.borrow();
+        if !keysym_map.contains_key(&keysym) {
             None
         } else {
-            char_map.get(&chr).cloned()
+            keysym_map.get(&keysym).cloned()
         }
     }
 
@@ -275,7 +272,7 @@ impl XKeyboard {
         }
 
         let new_group_index = get_active_group_index(current_state, current_keymap);
-        let new_char_event_map: HashMap<char, KeyEvent> = build_char_event_map(
+        let new_keysym_event_map: HashMap<u32, KeyEvent> = build_keysym_event_map(
             current_keymap,
             min_keycode,
             max_keycode,
@@ -284,7 +281,7 @@ impl XKeyboard {
 
         self.phys_code_map.replace(phys_code_map);
         self.code_phys_map.replace(code_phys_map);
-        self.char_event_map.replace(new_char_event_map);
+        self.keysym_event_map.replace(new_keysym_event_map);
         self.keysym_map.replace(new_keysym_map);
         self.unused_keycodes.replace(new_unused_keycodes);
 
