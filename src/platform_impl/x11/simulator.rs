@@ -2,6 +2,7 @@ use super::connection::XConnection;
 use super::keyboard::MOD_NAME_ISO_LEVEL3_SHIFT;
 
 use crate::connection::ConnectionOps;
+use crate::keysyms;
 use crate::simulate::{Simulate, SENDER};
 use crate::types::{KeyCode, KeyEvent, Modifiers, ServerMode};
 
@@ -87,11 +88,11 @@ impl Simulate for XSimulator {
             );
         };
     }
-    // FIXME: Can't hold char key, may be just click.
+
     fn simulate_char_without_modifiers(&mut self, chr: char) {
         log::debug!("simulate char: {:?} ", chr);
         if let Err(err) = self.process_char_impl(chr) {
-            log::error!("{err:#}")
+            log::error!("Failed to simulate {err:#}")
         };
     }
 
@@ -181,25 +182,12 @@ impl XSimulator {
         Ok(())
     }
 
-    #[inline]
-    fn char_to_keysym(chr: char) -> u32 {
-        let origin = chr as u32;
-        if origin < 0x100 {
-            origin
-        } else {
-            origin | 0x01000000
-        }
-    }
-
     fn process_char_impl(&mut self, chr: char) -> anyhow::Result<()> {
-        let keyboard = &self.conn().keyboard;
-        let char_keysym = keyboard.char_keysym.borrow();
+        let keysym = keysyms::char_to_keysym(chr);
 
-        let mut keysym = Self::char_to_keysym(chr);
-        if let Some(v) = char_keysym.get(&keysym) {
-            keysym = *v;
-        }
+        let keyboard = &self.conn().keyboard;
         let char_key_event = keyboard.get_key_event_by_keysym(keysym);
+
         if let Some(char_key_event) = char_key_event {
             let target_modifiers = char_key_event.modifiers;
             let cur_modifiers = self.get_current_modifiers();
@@ -266,25 +254,31 @@ impl XSimulator {
             }
             ServerMode::Translate => {
                 let kbd = conn.keyboard.borrow();
+                let char_keysym = kbd.char_keysym.borrow();
 
                 let cur_modifiers = self.get_current_modifiers();
                 let target_modifers = key_event.modifiers.trans_positional_mods();
+                let key_event_vec = cur_modifiers.diff_modifiers(&target_modifers);
 
                 match key_event.key {
                     KeyCode::Char(chr) => {
                         if !press {
                             return Ok(());
                         }
-                        if !target_modifers.is_shortcut() {
-                            self.simulate_char_without_modifiers(chr);
+                        if let Some(&keysym) = char_keysym.get(&(chr as u32)) {
+                            // PhysKeyCode: \u{8} => Delete
+                            self.prepare_pressed_keys(&key_event_vec)?;
+
+                            self.simulate_keysym(keysym, true);
+                            self.simulate_keysym(keysym, false);
                         } else if kbd.keysym_map.borrow().contains_key(&(chr as u32)) {
-                            let key_event_vec = cur_modifiers.diff_modifiers(&target_modifers);
+                            // // PhysKeyCode: q => KeyQ in US, q => keyA(Input char "a") in Fr
                             self.prepare_pressed_keys(&key_event_vec)?;
 
                             self.simulate_keysym(chr as u32, true);
                             self.simulate_keysym(chr as u32, false);
                         } else {
-                            log::error!("Failed to simulate key_event: {:?}", key_event);
+                            self.simulate_char_without_modifiers(chr);
                         }
                     }
                     KeyCode::Physical(phys) => self.simulate_phys(phys, press),
