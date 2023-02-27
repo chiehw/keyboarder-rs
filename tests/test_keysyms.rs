@@ -1,6 +1,7 @@
+use keyboarder::keysyms::CHAR_KEYSYM_MAP;
+
 #[test]
 fn test_keysyms() {
     // cargo test --package keyboarder --test test_keysyms -- test_keysyms --exact --nocapture
-    println!("\\u{:04x} \u{037A}", '^' as u32);
-    println!("\\u{:04} \u{037A}", 'â' as u32);
+    assert_eq!(Some(226), CHAR_KEYSYM_MAP.get(&('â' as u32)).copied());
 }
