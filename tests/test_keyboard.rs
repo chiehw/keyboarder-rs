@@ -101,7 +101,7 @@ fn test_keyboard_event_by_char() {
             modifiers: Modifiers::SHIFT,
             raw_event: None,
         }),
-        kbd.get_key_event_by_char('!')
+        kbd.get_key_event_by_keysym('!' as u32)
     );
 }
 
@@ -143,6 +143,8 @@ fn test_keyboard_char_map() {
     let conn = Connection::init().unwrap();
 
     let kbd = conn.keyboard.borrow();
-    let evt_vec = kbd.borrow().get_key_event_by_char('-');
+    let evt_vec = kbd.borrow().get_key_event_by_keysym('^' as u32);
+    dbg!(evt_vec);
+    let evt_vec = kbd.borrow().get_key_event_by_keysym('ô' as u32);
     dbg!(evt_vec);
 }

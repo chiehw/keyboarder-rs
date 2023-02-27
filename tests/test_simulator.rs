@@ -108,5 +108,5 @@ fn test_simulate_get_modifier() {
     //simulator.simulate_phys(PhysKeyCode::ControlLeft, false);
 
     //simulator.simulate_phys(PhysKeyCode::ControlLeft, true);
-    dbg!(simulator.get_current_modifiers());
+    // dbg!(simulator.get_current_modifiers());
 }
