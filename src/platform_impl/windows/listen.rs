@@ -164,8 +164,9 @@ impl WinListener {
                 log::trace!("KeyCode=AltGr => {}", press);
                 return None;
             }
-            if modifiers.contains(Modifiers::RIGHT_ALT) {
-                modifiers -= Modifiers::RIGHT_ALT;
+            if modifiers.contains(Modifiers::LEFT_CTRL) && modifiers.contains(Modifiers::RIGHT_ALT)
+            {
+                modifiers = modifiers - Modifiers::LEFT_CTRL - Modifiers::RIGHT_ALT;
                 modifiers |= Modifiers::ALT_GR;
             }
         }
@@ -290,7 +291,7 @@ impl WinListener {
                 press,
                 // Don't send AltGr to remote, Maybe the remote
                 // machine doesn't have altgr(US keyboard for linux).
-                modifiers: modifiers - Modifiers::ALT_GR,
+                modifiers,
                 raw_event: Some(raw_key_event),
             }
             .normalize_ctrl();
