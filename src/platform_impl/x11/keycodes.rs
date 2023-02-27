@@ -128,6 +128,7 @@ pub fn build_phys_keycode_map(
         ("VOL-", PhysKeyCode::VolumeDown),
         ("VOL+", PhysKeyCode::VolumeUp),
         ("HELP", PhysKeyCode::Help),
+        ("MENU", PhysKeyCode::Menu),
     ] {
         if let Some(code) = keymap.key_by_name(name) {
             code_phys_map.insert(code, *phys);

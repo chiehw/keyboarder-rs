@@ -118,7 +118,7 @@ pub fn build_phys_keycode_map() -> (
         (0xE020, PhysKeyCode::VolumeMute),
         (0xE02E, PhysKeyCode::VolumeDown),
         (0xE030, PhysKeyCode::VolumeUp),
-        (0xE05D, PhysKeyCode::Apps),
+        (0xE05D, PhysKeyCode::Menu),
         (0x53, PhysKeyCode::KpDecimal),
         (0x0000, PhysKeyCode::Help), // todo
     ] {
