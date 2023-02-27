@@ -45,4 +45,6 @@ impl Simulate for WinSimulator {
     fn simulate_server(&mut self, key_event: &crate::types::KeyEvent) {
         todo!()
     }
+
+    fn release_modifiers(&self) {}
 }

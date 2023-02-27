@@ -126,6 +126,31 @@ impl Simulate for XSimulator {
             log::error!("{err:#}")
         };
     }
+
+    fn release_modifiers(&self) {
+        let keyboard = &self.conn().keyboard;
+        for phys in [
+            PhysKeyCode::ShiftLeft,
+            PhysKeyCode::ShiftRight,
+            PhysKeyCode::ControlLeft,
+            PhysKeyCode::ControlRight,
+            PhysKeyCode::AltLeft,
+            PhysKeyCode::AltRight,
+            PhysKeyCode::MetaLeft,
+            PhysKeyCode::MetaRight,
+        ] {
+            if let Some(keycode) = keyboard.get_keycode_by_phys(phys) {
+                if let Err(err) = self.send_native(keycode as u8, false) {
+                    log::error!(
+                        "release modifiers err: keycode={}, press={}, err={:?}",
+                        keycode,
+                        false,
+                        err
+                    );
+                }
+            }
+        }
+    }
 }
 
 impl XSimulator {
@@ -341,31 +366,6 @@ impl XSimulator {
                 };
             }
             self.pressed_key.clear();
-        }
-    }
-
-    pub fn release_modifiers(&mut self) {
-        let keyboard = &self.conn().keyboard;
-        for phys in [
-            PhysKeyCode::ShiftLeft,
-            PhysKeyCode::ShiftRight,
-            PhysKeyCode::ControlLeft,
-            PhysKeyCode::ControlRight,
-            PhysKeyCode::AltLeft,
-            PhysKeyCode::AltRight,
-            PhysKeyCode::MetaLeft,
-            PhysKeyCode::MetaRight,
-        ] {
-            if let Some(keycode) = keyboard.get_keycode_by_phys(phys) {
-                if let Err(err) = self.send_native(keycode as u8, false) {
-                    log::error!(
-                        "release modifiers err: keycode={}, press={}, err={:?}",
-                        keycode,
-                        false,
-                        err
-                    );
-                }
-            }
         }
     }
 }

@@ -517,29 +517,6 @@ pub enum KeyCode {
     Physical(PhysKeyCode),
 }
 
-impl KeyCode {
-    /// Return true if the key represents a modifier key.
-    pub fn is_modifier(&self) -> bool {
-        matches!(
-            self,
-            Self::Hyper
-                | Self::Super
-                | Self::Meta
-                | Self::Shift
-                | Self::LeftShift
-                | Self::RightShift
-                | Self::Control
-                | Self::LeftControl
-                | Self::RightControl
-                | Self::Alt
-                | Self::LeftAlt
-                | Self::RightAlt
-                | Self::LeftWindows
-                | Self::RightWindows
-        )
-    }
-}
-
 pub fn is_ascii_control(c: char) -> Option<char> {
     let c = c as u32;
     if c < 0x20 {

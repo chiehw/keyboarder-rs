@@ -1,4 +1,5 @@
 use crate::platform_impl::{Connection, Simulator};
+use crate::simulate::Simulate;
 use crate::types::ServerMode;
 
 use std::cell::RefCell;
