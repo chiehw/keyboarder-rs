@@ -156,10 +156,25 @@ impl XSimulator {
         Ok(())
     }
 
+    #[inline]
+    fn char_to_keysym(chr: char) -> u32 {
+        let origin = chr as u32;
+        if origin < 0x100 {
+            origin
+        } else {
+            origin | 0x01000000
+        }
+    }
+
     fn process_char_impl(&mut self, chr: char) -> anyhow::Result<()> {
         let keyboard = &self.conn().keyboard;
+        let char_keysym = keyboard.char_keysym.borrow();
 
-        let char_key_event = keyboard.get_key_event_by_char(chr);
+        let mut keysym = Self::char_to_keysym(chr);
+        if let Some(v) = char_keysym.get(&keysym) {
+            keysym = *v;
+        }
+        let char_key_event = keyboard.get_key_event_by_keysym(keysym);
         if let Some(char_key_event) = char_key_event {
             let target_modifiers = char_key_event.modifiers;
             let cur_modifiers = self.get_current_modifiers();
@@ -244,7 +259,7 @@ impl XSimulator {
                             self.simulate_keysym(chr as u32, true);
                             self.simulate_keysym(chr as u32, false);
                         } else {
-                            log::error!("Failed to simulate char: {:?}", chr);
+                            log::error!("Failed to simulate key_event: {:?}", key_event);
                         }
                     }
                     KeyCode::Physical(phys) => self.simulate_phys(phys, press),
