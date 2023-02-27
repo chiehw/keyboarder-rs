@@ -476,25 +476,25 @@ impl KeyEvent {
     }
 }
 
-pub struct KeyEventBin(Vec<u8>);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SimEvent {
+    ExitThread,
+    Simulate(KeyEvent),
+}
 
-impl KeyEventBin {
-    pub fn new(buf: Vec<u8>) -> Self {
-        Self(buf)
-    }
-    pub fn to_key_event(&self) -> anyhow::Result<KeyEvent> {
-        let key_event: KeyEvent = bincode::deserialize(&self.0)?;
-        Ok(key_event)
+impl TryFrom<Vec<u8>> for SimEvent {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        Ok(bincode::deserialize(&value)?)
     }
 }
 
-impl From<KeyEvent> for KeyEventBin {
-    fn from(key_event: KeyEvent) -> Self {
-        if let Ok(buff) = key_event.to_u8_vec() {
-            KeyEventBin(buff)
-        } else {
-            KeyEventBin(vec![])
-        }
+impl TryInto<Vec<u8>> for SimEvent {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> Result<Vec<u8>, Self::Error> {
+        Ok(bincode::serialize(&self)?)
     }
 }
 

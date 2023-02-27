@@ -2,7 +2,7 @@ use crate::{
     connection::ConnectionOps,
     platform_impl::Simulator,
     simulate::Simulate,
-    types::{KeyEvent, KeyEventBin},
+    types::{KeyEvent, SimEvent},
 };
 
 use super::keyboard::XKeyboard;
@@ -75,8 +75,15 @@ impl XConnection {
                         let num = read_fd.read(&mut buf)?;
                         anyhow::ensure!(num != buf.len(), "buf is too small");
 
-                        let key_event = KeyEventBin::new(buf).to_key_event()?;
-                        self.process_server_event_log(&key_event);
+                        match SimEvent::try_from(buf)? {
+                            SimEvent::ExitThread => {
+                                break;
+                            }
+                            SimEvent::Simulate(key_event) => {
+                                dbg!(&key_event);
+                                self.process_server_event_log(&key_event)
+                            }
+                        }
                     }
                     TOK_XKB => {
                         self.process_queued_xcb_log();

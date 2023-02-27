@@ -1,5 +1,5 @@
-use crate::types::ServerMode;
 use crate::types::{KeyEvent, PhysKeyCode};
+use crate::types::{ServerMode, SimEvent};
 use filedescriptor::FileDescriptor;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -12,7 +12,7 @@ lazy_static::lazy_static! {
 pub trait Simulate {
     fn spawn_server(mode: ServerMode) -> anyhow::Result<JoinHandle<()>>;
 
-    fn event_to_server(key_event: &KeyEvent) -> anyhow::Result<()>;
+    fn event_to_server(event: &SimEvent) -> anyhow::Result<()>;
 
     fn simulate_keycode(&mut self, keycode: u32, press: bool);
 
