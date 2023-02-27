@@ -1,12 +1,16 @@
 use std::collections::HashMap;
 
+pub struct CharKeySymMap {
+    pub keysym_to_char: HashMap<u32, u32>,
+    pub char_to_keysym: HashMap<u32, u32>,
+}
 lazy_static::lazy_static! {
-    pub static ref CHAR_KEYSYM_MAP: HashMap<u32, u32> = build_char_keysym();
+    pub static ref CHAR_KEYSYM_MAP: CharKeySymMap = build_char_keysym();
 }
 
 /// from pynput xorg_keysyms, had remove None
 ///
-pub fn build_char_keysym() -> HashMap<u32, u32> {
+pub fn build_char_keysym() -> CharKeySymMap {
     // (name keysym codepoint)
     let symbols: [(&str, u32, char); 1032] = [
         ("P", 80, '\u{50}'),
@@ -1042,16 +1046,24 @@ pub fn build_char_keysym() -> HashMap<u32, u32> {
         ("zerosuperior", 16785520, '\u{2070}'),
         ("zstroke", 16777654, '\u{1b6}'),
     ];
-    let mut res = HashMap::new();
+    let mut char_to_keysym = HashMap::new();
     for (_, keysym, chr) in symbols {
-        res.insert(chr as u32, keysym as u32);
+        char_to_keysym.insert(chr as u32, keysym as u32);
     }
-    res
+
+    let mut keysym_to_char = HashMap::new();
+    for (_, keysym, chr) in symbols {
+        keysym_to_char.insert(keysym as u32, chr as u32);
+    }
+    CharKeySymMap {
+        keysym_to_char,
+        char_to_keysym,
+    }
 }
 
 #[inline]
 pub fn char_to_keysym(chr: char) -> u32 {
-    if let Some(keysym) = CHAR_KEYSYM_MAP.get(&(chr as u32)) {
+    if let Some(keysym) = CHAR_KEYSYM_MAP.char_to_keysym.get(&(chr as u32)) {
         *keysym
     } else {
         let origin = chr as u32;

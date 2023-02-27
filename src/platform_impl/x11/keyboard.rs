@@ -1,4 +1,5 @@
 use crate::{
+    keysyms::CHAR_KEYSYM_MAP,
     platform_impl::platform::keycodes::build_phys_keycode_map,
     types::{GroupIndex, KeyCode, KeyEvent},
     types::{Modifiers, PhysKeyCode},
@@ -92,8 +93,8 @@ impl XKeyboard {
         let state = xkb::x11::state_new_from_device(&keymap, connection, device_id);
         let (code_phys_map, phys_code_map) = build_phys_keycode_map(&keymap);
         let mut keysym_map = HashMap::new();
-         // FIXME: update when switch keyboard
-         let mut char_keysym = HashMap::new();
+        // FIXME: update when switch keyboard
+        let mut char_keysym = HashMap::new();
         let mut unused_keycodes: Vec<xkb::Keycode> = vec![];
 
         let min_keycode = keymap.min_keycode();
@@ -107,14 +108,15 @@ impl XKeyboard {
                 keysym_map.insert(keysym, keycode);
             }
         }
-        for (keysym, _) in &keysym_map {
-            let keysym = keysym.to_owned();
-            let chr = unsafe { xkbcommon::xkb::ffi::xkb_keysym_to_utf32(keysym) };
-            // if keysym == 65106 {
-            //     println!("keysym={:?} => chr={:?}", keysym, chr);
-            // }
+        for keysym in keysym_map.keys() {
+            let mut chr = unsafe { xkbcommon::xkb::ffi::xkb_keysym_to_utf32(*keysym) };
+            if chr == '\0' as u32 {
+                if let Some(new_chr) = CHAR_KEYSYM_MAP.keysym_to_char.get(keysym) {
+                    chr = *new_chr;
+                }
+            }
 
-            char_keysym.insert(chr, keysym);
+            char_keysym.insert(chr, *keysym);
         }
 
         let group_index = get_active_group_index(&state, &keymap);
