@@ -77,6 +77,11 @@ impl XConnection {
 
                         match SimEvent::try_from(buf)? {
                             SimEvent::ExitThread => {
+                                log::info!("Exit simulate thread");
+                                // FIXME: release by drop
+                                if let Some(simulator) = self.simulator.borrow_mut().as_mut() {
+                                    simulator.release_modifiers();
+                                }
                                 break;
                             }
                             SimEvent::Simulate(key_event) => {
