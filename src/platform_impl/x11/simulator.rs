@@ -130,30 +130,14 @@ impl Simulate for XSimulator {
         };
     }
 
-    fn release_modifiers(&self) {
-        let keyboard = &self.conn().keyboard;
-        log::info!("Release all modifiers");
-        for phys in [
-            PhysKeyCode::ShiftLeft,
-            PhysKeyCode::ShiftRight,
-            PhysKeyCode::ControlLeft,
-            PhysKeyCode::ControlRight,
-            PhysKeyCode::AltLeft,
-            PhysKeyCode::AltRight,
-            PhysKeyCode::MetaLeft,
-            PhysKeyCode::MetaRight,
-        ] {
-            if let Some(keycode) = keyboard.get_keycode_by_phys(phys) {
-                if let Err(err) = self.send_native(keycode as u8, false) {
-                    log::error!(
-                        "release modifiers err: keycode={}, press={}, err={:?}",
-                        keycode,
-                        false,
-                        err
-                    );
-                }
-            }
-        }
+    fn release_modifiers(&mut self) -> anyhow::Result<()> {
+        let cur_modifiers = self.get_current_modifiers();
+        let target_modifiers = Modifiers::NONE;
+        let key_event_vec = cur_modifiers.diff_modifiers(&target_modifiers);
+
+        self.prepare_pressed_keys(&key_event_vec)?;
+
+        Ok(())
     }
 }
 
@@ -225,7 +209,7 @@ impl XSimulator {
                 self.simulate_keycode(keycode, false);
             }
         } else if let Some(&keycode) = self.rebinding_keysyms.get(&keysym) {
-            self.release_modifiers();
+            self.release_modifiers()?;
             self.simulate_keycode(keycode, true);
             self.simulate_keycode(keycode, false);
         } else if let Ok(keycode) = self.rebinding_keycode(keysym) {
@@ -236,7 +220,7 @@ impl XSimulator {
             );
             self.rebinding_keysyms.insert(keysym, keycode);
 
-            self.release_modifiers();
+            self.release_modifiers()?;
             self.simulate_keycode(keycode, true);
             self.simulate_keycode(keycode, false);
         } else {
@@ -416,6 +400,7 @@ impl XSimulator {
 impl Drop for XSimulator {
     fn drop(&mut self) {
         self.release_pressed_keys();
-        self.release_modifiers();
+        // FIXME
+        // self.release_modifiers().ma;
     }
 }

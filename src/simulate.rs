@@ -26,5 +26,5 @@ pub trait Simulate {
 
     fn simulate_server(&mut self, key_event: &KeyEvent);
 
-    fn release_modifiers(&self);
+    fn release_modifiers(&mut self) -> anyhow::Result<()>;
 }

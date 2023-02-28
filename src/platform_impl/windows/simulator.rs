@@ -46,5 +46,5 @@ impl Simulate for WinSimulator {
         todo!()
     }
 
-    fn release_modifiers(&self) {}
+    fn release_modifiers(&mut self) -> anyhow::Result<()> {}
 }
