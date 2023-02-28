@@ -340,10 +340,12 @@ impl XSimulator {
     }
 
     fn process_keycode_event_impl(&mut self, keycode: u32, press: bool) -> anyhow::Result<()> {
-        ensure!(
-            (8..=255).contains(&keycode),
-            "Unexpected keycode, keycode should in (8, 255)"
-        );
+        if !(8..=255).contains(&keycode) {
+            anyhow::bail!(
+                "Unexpected keycode, keycode should in (8, 255): keycode={:?}",
+                keycode
+            );
+        }
         let keycode: u8 = keycode.try_into()?;
 
         match press {
