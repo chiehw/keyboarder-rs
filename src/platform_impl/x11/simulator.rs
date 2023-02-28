@@ -2,7 +2,7 @@ use super::connection::XConnection;
 use super::keyboard::MOD_NAME_ISO_LEVEL3_SHIFT;
 
 use crate::connection::ConnectionOps;
-use crate::keysyms;
+use crate::keysyms::{self, char_to_keysym};
 use crate::simulate::{Simulate, SENDER};
 use crate::types::{KeyCode, KeyEvent, Modifiers, ServerMode, SimEvent};
 
@@ -281,18 +281,28 @@ impl XSimulator {
                         if !press {
                             return Ok(());
                         }
-                        if let Some(&keysym) = char_keysym.get(&(chr as u32)) {
-                            // PhysKeyCode: \u{8} => Delete
+                        let keysym = char_to_keysym(chr);
+                        if !cur_modifiers.is_shortcut() && !chr.is_control() {
+                            // Fr:
+                            // "!" => keycode=33, but shift + 1 is US
+                            // exclude: delete(\u{8})
+                            self.simulate_char_without_modifiers(chr);
+                        } else if chr.is_control() {
+                            // PhysKeyCode: \u{8} => Delete( chr is )
+                            if let Some(&keysym) = char_keysym.get(&(chr as u32)) {
+                                self.prepare_pressed_keys(&key_event_vec)?;
+
+                                self.simulate_keysym(keysym, true);
+                                self.simulate_keysym(keysym, false);
+                            } else {
+                                log::error!("Faile to process control char: {:?}", chr);
+                            }
+                        } else if kbd.keysym_keycode_map.borrow().contains_key(&keysym) {
+                            // PhysKeyCode: q => KeyQ in US, q => keyA(Input char "a") in Fr
                             self.prepare_pressed_keys(&key_event_vec)?;
 
                             self.simulate_keysym(keysym, true);
                             self.simulate_keysym(keysym, false);
-                        } else if kbd.keysym_map.borrow().contains_key(&(chr as u32)) {
-                            // // PhysKeyCode: q => KeyQ in US, q => keyA(Input char "a") in Fr
-                            self.prepare_pressed_keys(&key_event_vec)?;
-
-                            self.simulate_keysym(chr as u32, true);
-                            self.simulate_keysym(chr as u32, false);
                         } else {
                             self.simulate_char_without_modifiers(chr);
                         }
