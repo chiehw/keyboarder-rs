@@ -38,11 +38,14 @@ fn main() -> anyhow::Result<()> {
             Ok(stream) => {
                 let stream: TcpStream = stream;
                 if let Err(err) = handle_connection(stream) {
+                    Simulator::event_to_server(&SimEvent::ReleaseKeys)
+                        .map_err(|err| log::error!("Failed to exit thread: {:?}", err))
+                        .ok();
                     log::error!("simulate err: {:?}", err);
                 }
             }
 
-            Err(e) => {
+            Err(err) => {
                 log::error!("Faile to process stream: {:?}", err);
                 break;
             }
