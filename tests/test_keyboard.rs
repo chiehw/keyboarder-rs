@@ -105,10 +105,13 @@ fn test_keyboard_event_by_char() {
     //     }),
     //     kbd.get_key_event_by_keysym('!' as u32)
     // );
-    let keysym = char_to_keysym('€');
-    dbg!(keysym);
-    dbg!('€' as u32);
-    dbg!(kbd.get_key_event_by_keysym(keysym));
+    let keysym = char_to_keysym('ä');
+    let evt = kbd.get_key_event_by_keysym(keysym);
+    dbg!(evt);
+
+    let keysym = char_to_keysym('ü');
+    let evt = kbd.get_key_event_by_keysym(keysym);
+    dbg!(evt);
 }
 
 #[test]
