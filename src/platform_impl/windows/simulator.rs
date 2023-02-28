@@ -1,6 +1,6 @@
 use crate::platform_impl::platform::connection::WinConnection;
 use crate::simulate::Simulate;
-use crate::types::ServerMode;
+use crate::types::{self, ServerMode, SimEvent};
 use std::rc::Rc;
 
 pub struct WinSimulator {
@@ -18,7 +18,7 @@ impl Simulate for WinSimulator {
         todo!()
     }
 
-    fn event_to_server(_key_event: &crate::types::KeyEvent) -> anyhow::Result<()> {
+    fn event_to_server(_simu_event: &types::SimEvent) -> anyhow::Result<()> {
         todo!()
     }
 

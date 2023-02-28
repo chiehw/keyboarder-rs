@@ -291,7 +291,7 @@ impl WinListener {
                 press,
                 // Don't send AltGr to remote, Maybe the remote
                 // machine doesn't have altgr(US keyboard for linux).
-                modifiers,
+                modifiers: modifiers - Modifiers::ALT_GR,
                 raw_event: Some(raw_key_event),
             }
             .normalize_ctrl();
