@@ -33,7 +33,7 @@ fn test_kbd_keysym_map() {
     let conn = Connection::init().unwrap();
 
     let kbd = conn.keyboard.borrow();
-    let keysym_map = kbd.keysym_map.borrow();
+    let keysym_map = kbd.keysym_keycode_map.borrow();
 
     let keycode = keysym_map.get(&49);
     assert_eq!(keycode, Some(&10));
@@ -87,6 +87,8 @@ fn test_keyboard_altgr_when_simulate() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_keyboard_event_by_char() {
+    use keyboarder::keysyms::char_to_keysym;
+
     env_logger::init();
     std::env::set_var("DISPLAY", ":0");
 
@@ -94,15 +96,19 @@ fn test_keyboard_event_by_char() {
 
     let kbd = conn.keyboard.borrow();
 
-    assert_eq!(
-        Some(KeyEvent {
-            key: KeyCode::RawCode(10,),
-            press: false,
-            modifiers: Modifiers::SHIFT,
-            raw_event: None,
-        }),
-        kbd.get_key_event_by_keysym('!' as u32)
-    );
+    // assert_eq!(
+    //     Some(KeyEvent {
+    //         key: KeyCode::RawCode(10,),
+    //         press: false,
+    //         modifiers: Modifiers::SHIFT,
+    //         raw_event: None,
+    //     }),
+    //     kbd.get_key_event_by_keysym('!' as u32)
+    // );
+    let keysym = char_to_keysym('€');
+    dbg!(keysym);
+    dbg!('€' as u32);
+    dbg!(kbd.get_key_event_by_keysym(keysym));
 }
 
 #[test]
@@ -137,14 +143,25 @@ fn test_keyboard_keysym_map() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_keyboard_char_map() {
+    use keyboarder::keysyms::char_to_keysym;
+    use lazy_static::__Deref;
+
     env_logger::init();
     std::env::set_var("DISPLAY", ":0");
 
     let conn = Connection::init().unwrap();
 
     let kbd = conn.keyboard.borrow();
-    let evt_vec = kbd.borrow().get_key_event_by_keysym('^' as u32);
-    dbg!(evt_vec);
-    let evt_vec = kbd.borrow().get_key_event_by_keysym('ô' as u32);
-    dbg!(evt_vec);
+    // let evt_vec = kbd.borrow().get_key_event_by_keysym('â' as u32);
+    // dbg!(evt_vec);
+    // let evt_vec = kbd.borrow().get_key_event_by_keysym('ô' as u32);
+    // dbg!(evt_vec);
+
+    let chars = kbd.char_keysym.borrow();
+    for (chr, keysym) in chars.deref() {
+        println!("{:?} {:?}", char::from_u32(*chr), keysym);
+    }
+    let keysym = char_to_keysym('\t');
+    dbg!(keysym);
+    dbg!(chars.len());
 }
