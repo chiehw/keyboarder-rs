@@ -70,7 +70,7 @@ pub struct XKeyboard {
     pub keysym_keycode_map: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
     pub char_keysym: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
     keysym_event_map: RefCell<HashMap<u32, KeyEvent>>,
-    unused_keycodes: RefCell<Vec<xkb::Keycode>>,
+    pub unused_keycodes: RefCell<Vec<xkb::Keycode>>,
     pub state: RefCell<xkb::State>,
     pub keymap: RefCell<xkb::Keymap>,
     device_id: u8,
@@ -103,7 +103,7 @@ impl XKeyboard {
         for keycode in min_keycode..max_keycode {
             let keysym = state.key_get_one_sym(keycode);
             if keysym == 0 {
-                unused_keycodes.push(keysym);
+                unused_keycodes.push(keycode);
             } else {
                 keysym_keycode_map.insert(keysym, keycode);
             }
