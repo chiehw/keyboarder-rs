@@ -12,6 +12,7 @@ use filedescriptor::Pipe;
 use xkbcommon::xkb;
 
 use std::borrow::Borrow;
+use std::collections::HashMap;
 use std::io::Write;
 use std::thread::JoinHandle;
 use std::{
@@ -28,6 +29,7 @@ pub struct XSimulator {
     pressed_key: HashSet<u8>,
     root: xcb::x::Window,
     pub mode: Option<ServerMode>,
+    pub rebinding_keysyms: HashMap<u32, u32>,
 }
 
 impl Simulate for XSimulator {
@@ -166,6 +168,7 @@ impl XSimulator {
             root,
             device_id,
             mode: None,
+            rebinding_keysyms: HashMap::new(),
         }
     }
 
@@ -181,6 +184,25 @@ impl XSimulator {
             }
         }
         Ok(())
+    }
+
+    fn rebinding_keycode(&self, keysym: u32) -> anyhow::Result<u32> {
+        let conn = &self.conn();
+
+        let mut unused = conn.keyboard.unused_keycodes.borrow_mut();
+        if unused.len() > 1 {
+            let keycode = unused.remove(0);
+            conn.send_request_no_reply_log(&xcb::x::ChangeKeyboardMapping {
+                keycode_count: 1,
+                first_keycode: keycode as u8,
+                keysyms_per_keycode: 1,
+                keysyms: &[keysym],
+            });
+            conn.flush().context("flushing pending requests")?;
+            Ok(keycode)
+        } else {
+            anyhow::bail!("Can't find unused keycode");
+        }
     }
 
     fn process_char_impl(&mut self, chr: char) -> anyhow::Result<()> {
@@ -202,22 +224,23 @@ impl XSimulator {
             if let KeyCode::RawCode(keycode) = char_key_event.key {
                 self.simulate_keycode(keycode, false);
             }
-        } else {
-            conn.send_request_no_reply_log(&xcb::x::ChangeKeyboardMapping {
-                keycode_count: 1,
-                first_keycode: 8,
-                keysyms_per_keycode: 1,
-                keysyms: &[keysym],
-            });
-            conn.flush().context("flushing pending requests")?;
+        } else if let Some(&keycode) = self.rebinding_keysyms.get(&keysym) {
+            self.release_modifiers();
+            self.simulate_keycode(keycode, true);
+            self.simulate_keycode(keycode, false);
+        } else if let Ok(keycode) = self.rebinding_keycode(keysym) {
             log::info!(
-                "Remapping keycode=8 => keysym={:?}(chr='{:?}')",
+                "Remapping keycode={keycode} => keysym={:?} char={:?}')",
                 keysym,
                 chr
             );
+            self.rebinding_keysyms.insert(keysym, keycode);
 
-            self.simulate_keycode(8, true);
-            self.simulate_keycode(8, false);
+            self.release_modifiers();
+            self.simulate_keycode(keycode, true);
+            self.simulate_keycode(keycode, false);
+        } else {
+            anyhow::bail!("Failed to process char: char={chr}, keysym={keysym}")
         }
 
         Ok(())
