@@ -67,7 +67,7 @@ pub fn build_keysym_event_map(
 pub struct XKeyboard {
     phys_code_map: RefCell<HashMap<PhysKeyCode, xkb::Keycode>>,
     code_phys_map: RefCell<HashMap<xkb::Keycode, PhysKeyCode>>,
-    pub keysym_map: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
+    pub keysym_keycode_map: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
     pub char_keysym: RefCell<HashMap<xkb::Keysym, xkb::Keycode>>,
     keysym_event_map: RefCell<HashMap<u32, KeyEvent>>,
     unused_keycodes: RefCell<Vec<xkb::Keycode>>,
@@ -92,7 +92,7 @@ impl XKeyboard {
         );
         let state = xkb::x11::state_new_from_device(&keymap, connection, device_id);
         let (code_phys_map, phys_code_map) = build_phys_keycode_map(&keymap);
-        let mut keysym_map = HashMap::new();
+        let mut keysym_keycode_map = HashMap::new();
         // FIXME: update when switch keyboard
         let mut char_keysym = HashMap::new();
         let mut unused_keycodes: Vec<xkb::Keycode> = vec![];
@@ -105,10 +105,10 @@ impl XKeyboard {
             if keysym == 0 {
                 unused_keycodes.push(keysym);
             } else {
-                keysym_map.insert(keysym, keycode);
+                keysym_keycode_map.insert(keysym, keycode);
             }
         }
-        for keysym in keysym_map.keys() {
+        for keysym in keysym_keycode_map.keys() {
             let mut chr = unsafe { xkbcommon::xkb::ffi::xkb_keysym_to_utf32(*keysym) };
             if chr == '\0' as u32 {
                 if let Some(new_chr) = CHAR_KEYSYM_MAP.keysym_to_char.get(keysym) {
@@ -151,7 +151,7 @@ impl XKeyboard {
         Ok(Self {
             phys_code_map: RefCell::new(phys_code_map),
             code_phys_map: RefCell::new(code_phys_map),
-            keysym_map: RefCell::new(keysym_map),
+            keysym_keycode_map: RefCell::new(keysym_keycode_map),
             char_keysym: RefCell::new(char_keysym),
             keysym_event_map: RefCell::new(keysym_event_map),
             unused_keycodes: RefCell::new(unused_keycodes),
@@ -192,11 +192,11 @@ impl XKeyboard {
     }
 
     pub fn get_keycode_by_keysym(&self, keysym: u32) -> Option<u32> {
-        let keysym_map = self.keysym_map.borrow();
-        if !keysym_map.contains_key(&keysym) {
+        let keysym_keycode_map = self.keysym_keycode_map.borrow();
+        if !keysym_keycode_map.contains_key(&keysym) {
             None
         } else {
-            keysym_map.get(&keysym).copied()
+            keysym_keycode_map.get(&keysym).copied()
         }
     }
 
@@ -229,7 +229,6 @@ impl XKeyboard {
 
     pub fn keysym_is_dead_key(&self, keysym: xkb::Keysym) -> bool {
         let name = xkb::keysym_get_name(keysym);
-        dbg!(&name);
         name.starts_with("dead")
     }
 
@@ -258,7 +257,7 @@ impl XKeyboard {
         current_state: &xkb::State,
     ) -> anyhow::Result<()> {
         let (code_phys_map, phys_code_map) = build_phys_keycode_map(current_keymap);
-        let mut new_keysym_map = HashMap::new();
+        let mut new_keysym_keycode_map = HashMap::new();
         let mut new_unused_keycodes: Vec<xkb::Keycode> = vec![];
 
         let min_keycode = current_keymap.min_keycode();
@@ -269,7 +268,7 @@ impl XKeyboard {
             if keysym == 0 {
                 new_unused_keycodes.push(keysym);
             } else {
-                new_keysym_map.insert(keysym, keycode);
+                new_keysym_keycode_map.insert(keysym, keycode);
             }
         }
 
@@ -284,7 +283,7 @@ impl XKeyboard {
         self.phys_code_map.replace(phys_code_map);
         self.code_phys_map.replace(code_phys_map);
         self.keysym_event_map.replace(new_keysym_event_map);
-        self.keysym_map.replace(new_keysym_map);
+        self.keysym_keycode_map.replace(new_keysym_keycode_map);
         self.unused_keycodes.replace(new_unused_keycodes);
 
         // todo & warning: why group_index didn't change before and after replace?
