@@ -479,6 +479,7 @@ impl KeyEvent {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SimEvent {
     ExitThread,
+    ReleaseKeys,
     Simulate(KeyEvent),
 }
 

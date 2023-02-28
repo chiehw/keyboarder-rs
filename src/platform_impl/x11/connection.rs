@@ -85,8 +85,12 @@ impl XConnection {
                                 break;
                             }
                             SimEvent::Simulate(key_event) => {
-                                dbg!(&key_event);
                                 self.process_server_event_log(&key_event)
+                            }
+                            SimEvent::ReleaseKeys => {
+                                if let Some(simulator) = self.simulator.borrow_mut().as_mut() {
+                                    simulator.release_modifiers();
+                                }
                             }
                         }
                     }
