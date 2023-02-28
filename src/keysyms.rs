@@ -1066,6 +1066,11 @@ pub fn char_to_keysym(chr: char) -> u32 {
     if let Some(keysym) = CHAR_KEYSYM_MAP.char_to_keysym.get(&(chr as u32)) {
         *keysym
     } else {
-        chr as u32
+        let origin = chr as u32;
+        if origin < 0x100 {
+            origin
+        } else {
+            origin | 0x01000000
+        }
     }
 }
