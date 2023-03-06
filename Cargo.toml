@@ -26,10 +26,7 @@ ctrlc = "3.2.5"
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 curl = "0.4.44"
-
 mio = {version = "0.8", features = ["os-ext"]}
-rdev = {git = "https://github.com/fufesou/rdev"}
-tfc = {git = "https://github.com/fufesou/The-Fat-Controller"}
 x11 = {version = "2.19", features = ["xlib_xcb", "xlib"]}
 xcb = {version = "1.2", features = ["render", "randr", "dri2", "xkb", "xlib_xcb", "present", "xtest"]}
 xkbcommon = {version = "0.5.0", features = ["x11", "wayland"]}
