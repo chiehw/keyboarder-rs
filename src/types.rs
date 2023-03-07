@@ -449,6 +449,15 @@ impl KeyEvent {
         }
     }
 
+    pub fn with_char(chr: char) -> Self {
+        Self {
+            key: KeyCode::Char(chr),
+            press: true,
+            modifiers: Modifiers::NONE,
+            raw_event: None,
+        }
+    }
+
     /// if SHIFT is held and we have KeyCode::Char('c') we want to normalize
     /// that keycode to KeyCode::Char('C'); that is what this function does.
     pub fn normalize_shift(mut self) -> Self {
