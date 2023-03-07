@@ -1,7 +1,7 @@
 use keyboarder::{
     platform_impl::Simulator,
     simulate::Simulate,
-    types::{KeyCode, KeyEvent, Modifiers, PhysKeyCode, ServerMode, SimEvent},
+    types::{KeyCode, KeyEvent, Modifiers, ServerMode, SimEvent},
 };
 
 fn main() -> anyhow::Result<()> {
@@ -9,16 +9,14 @@ fn main() -> anyhow::Result<()> {
     std::env::set_var("DISPLAY", ":0");
 
     let key_event = KeyEvent {
-        key: KeyCode::Physical(PhysKeyCode::KeyQ),
+        key: KeyCode::Char('1'),
         press: true,
-        modifiers: Modifiers::SHIFT,
+        modifiers: Modifiers::NONE,
         raw_event: None,
     };
 
-    let handle = Simulator::spawn_server(ServerMode::Map)?;
+    Simulator::spawn_server(ServerMode::Translate)?;
     Simulator::event_to_server(&SimEvent::Simulate(key_event))?;
-
-    handle.join().unwrap();
 
     Ok(())
 }
