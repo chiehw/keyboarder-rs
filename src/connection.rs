@@ -33,7 +33,7 @@ pub trait ConnectionOps {
 
         let mut simulator = Simulator::new(&conn);
         simulator.mode.replace(mode);
-        simulator.release_modifiers();
+        simulator.release_modifiers()?;
         conn.simulator.borrow_mut().replace(simulator);
 
         Ok(conn)

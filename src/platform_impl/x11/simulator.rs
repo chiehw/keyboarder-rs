@@ -7,7 +7,7 @@ use crate::simulate::{Simulate, SENDER};
 use crate::types::{KeyCode, KeyEvent, Modifiers, ServerMode, SimEvent};
 
 use crate::types::PhysKeyCode;
-use anyhow::{ensure, Context};
+use anyhow::Context;
 use filedescriptor::Pipe;
 use xkbcommon::xkb;
 

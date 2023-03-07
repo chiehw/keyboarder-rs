@@ -80,7 +80,7 @@ impl XConnection {
                                 log::info!("Exit simulate thread");
                                 // FIXME: release by drop
                                 if let Some(simulator) = self.simulator.borrow_mut().as_mut() {
-                                    simulator.release_modifiers();
+                                    simulator.release_modifiers()?;
                                 }
                                 break;
                             }
@@ -89,7 +89,7 @@ impl XConnection {
                             }
                             SimEvent::ReleaseKeys => {
                                 if let Some(simulator) = self.simulator.borrow_mut().as_mut() {
-                                    simulator.release_modifiers();
+                                    simulator.release_modifiers()?;
                                 }
                             }
                         }
